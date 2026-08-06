@@ -88,7 +88,7 @@ class Face_Register:
         # ── Header bar ─────────────────────────────────────────────────────
         header = tk.Frame(self.win, bg=ACCENT_COLOR, height=50)
         header.pack(fill=tk.X)
-        tk.Label(header, text="🎓  Lab Attendance — Face Register",
+        tk.Label(header, text="Face Register ACSL",
                  font=self.font_title, bg=ACCENT_COLOR, fg=WHITE_COLOR,
                  padx=20, pady=10).pack(side=tk.LEFT)
 

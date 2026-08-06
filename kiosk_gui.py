@@ -24,10 +24,17 @@ class KioskGUI(tk.Tk):
         self.geometry("800x480")  # Ukuran umum LCD Raspberry Pi (7 inch)
         self.configure(bg="white")
         
+        self.is_fullscreen = False
+        self.bind("<F11>", self.toggle_fullscreen)
+        self.bind("<Escape>", self.end_fullscreen)
+        
         # Font definitions
-        self.title_font = tkFont.Font(family='Helvetica', size=24, weight='bold')
-        self.header_font = tkFont.Font(family='Helvetica', size=18, weight='bold')
-        self.normal_font = tkFont.Font(family='Helvetica', size=16)
+        self.title_font = tkFont.Font(family='Helvetica', size=32, weight='bold')
+        self.header_font = tkFont.Font(family='Helvetica', size=24, weight='bold')
+        self.normal_font = tkFont.Font(family='Helvetica', size=18)
+        self.large_button_font = tkFont.Font(family='Helvetica', size=22, weight='bold')
+        self.huge_time_font = tkFont.Font(family='Helvetica', size=110, weight='bold')
+        self.huge_msg_font = tkFont.Font(family='Helvetica', size=48, weight='bold')
         
         # Variables to track state
         self.current_user = None
@@ -45,7 +52,7 @@ class KioskGUI(tk.Tk):
         self.container.grid_columnconfigure(0, weight=1)
         
         self.frames = {}
-        for F in (MainScreen, VerifyIDScreen, FaceIDScreen, RFIDScreen, ShiftMutuScreen, SuccessScreen):
+        for F in (MainScreen, FaceIDScreen, RFIDScreen, ShiftMutuScreen, SuccessScreen):
             page_name = F.__name__
             frame = F(parent=self.container, controller=self)
             self.frames[page_name] = frame
@@ -55,6 +62,16 @@ class KioskGUI(tk.Tk):
         
     def _load_recognizer(self):
         self.recognizer = FaceRecognizerService(detect_every=3)
+
+    def toggle_fullscreen(self, event=None):
+        self.is_fullscreen = not getattr(self, 'is_fullscreen', False)
+        self.attributes("-fullscreen", self.is_fullscreen)
+        return "break"
+        
+    def end_fullscreen(self, event=None):
+        self.is_fullscreen = False
+        self.attributes("-fullscreen", False)
+        return "break"
 
     def show_frame(self, page_name):
         frame = self.frames[page_name]
@@ -67,27 +84,34 @@ class MainScreen(tk.Frame):
         super().__init__(parent, bg="white")
         self.controller = controller
         
-        header_frame = tk.Frame(self, bg="white")
+        self.center_frame = tk.Frame(self, bg="white")
+        self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        
+        header_frame = tk.Frame(self.center_frame, bg="white")
         header_frame.pack(pady=10, fill=tk.X)
         
         # Place logo on the left (or centered)
         try:
             logo_img = Image.open("logo.jpeg")
-            logo_img.thumbnail((80, 80))
+            logo_img.thumbnail((160, 160))
             self.logo_photo = ImageTk.PhotoImage(logo_img)
             tk.Label(header_frame, image=self.logo_photo, bg="white").pack(pady=10)
         except Exception as e:
             pass
         
         # Clock
-        self.time_label = tk.Label(self, text="", font=self.controller.title_font, bg="white", fg="#333333")
-        self.time_label.pack(pady=20)
+        self.time_label = tk.Label(self.center_frame, text="", font=self.controller.huge_time_font, bg="white", fg="black")
+        self.time_label.pack(pady=(10, 0))
+        
+        self.date_label = tk.Label(self.center_frame, text="", font=self.controller.header_font, bg="white", fg="black")
+        self.date_label.pack(pady=(0, 40))
+        
         self.update_clock()
         
         from tkmacosx import Button as MacButton
         
         # Buttons
-        btn_frame = tk.Frame(self, bg="white")
+        btn_frame = tk.Frame(self.center_frame, bg="white")
         btn_frame.pack(pady=50)
         
         MacButton(btn_frame, text="Absen Datang", font=self.controller.normal_font, 
@@ -102,37 +126,25 @@ class MainScreen(tk.Frame):
 
     def select_type(self, att_type):
         self.controller.attendance_type = att_type
-        self.controller.show_frame("VerifyIDScreen")
+        self.controller.show_frame("FaceIDScreen")
         
     def update_clock(self):
-        now = datetime.now().strftime("%A, %d %B %Y \n\n %H:%M:%S")
-        self.time_label.config(text=now)
-        self.after(1000, self.update_clock)
-
-class VerifyIDScreen(tk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent, bg="white")
-        self.controller = controller
-        
-        tk.Label(self, text="Verified Your ID", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=50)
-        
-        from tkmacosx import Button as MacButton
-        
-        btn_frame = tk.Frame(self, bg="white")
-        btn_frame.pack(pady=20)
-        
-        MacButton(btn_frame, text="Face ID", font=self.controller.normal_font, 
-                  bg="#007bff", fg="white", borderless=1,
-                  padx=50, pady=15, cursor="hand2", 
-                  command=lambda: self.controller.show_frame("FaceIDScreen")).pack(pady=10)
-        MacButton(btn_frame, text="RFID", font=self.controller.normal_font, 
-                  bg="#007bff", fg="white", borderless=1,
-                  padx=50, pady=15, cursor="hand2", 
-                  command=lambda: self.controller.show_frame("RFIDScreen")).pack(pady=10)
-                  
-        MacButton(self, text="< Back", font=self.controller.normal_font, 
-                  bg="#cccccc", fg="black", borderless=1, padx=20, pady=10,
-                  command=lambda: self.controller.show_frame("MainScreen")).pack(side=tk.BOTTOM, pady=20, anchor=tk.W, padx=20)
+        try:
+            now = datetime.now()
+            time_str = now.strftime("%H:%M")
+            
+            hari_dict = {"Monday": "Senin", "Tuesday": "Selasa", "Wednesday": "Rabu", "Thursday": "Kamis", "Friday": "Jumat", "Saturday": "Sabtu", "Sunday": "Minggu"}
+            bulan_dict = {"January": "Januari", "February": "Februari", "March": "Maret", "April": "April", "May": "Mei", "June": "Juni", "July": "Juli", "August": "Agustus", "September": "September", "October": "Oktober", "November": "November", "December": "Desember"}
+            
+            hari = hari_dict[now.strftime("%A")]
+            bulan = bulan_dict[now.strftime("%B")]
+            date_str = f"{hari}, {now.strftime('%d')} {bulan} {now.strftime('%Y')}"
+            
+            self.time_label.config(text=time_str)
+            self.date_label.config(text=date_str)
+            self.after(1000, self.update_clock)
+        except:
+            pass
 
 class FaceIDScreen(tk.Frame):
     def __init__(self, parent, controller):
@@ -140,18 +152,29 @@ class FaceIDScreen(tk.Frame):
         self.controller = controller
         self.cap = None
         
-        tk.Label(self, text="Scan Your Face", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=10)
+        self.center_frame = tk.Frame(self, bg="white")
+        self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
-        self.video_label = tk.Label(self, bg="white")
+        tk.Label(self.center_frame, text="Scan Your Face", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=10)
+        
+        self.video_label = tk.Label(self.center_frame, bg="white")
         self.video_label.pack(pady=10)
         
-        self.status_label = tk.Label(self, text="", font=self.controller.normal_font, bg="white", fg="red")
+        self.status_label = tk.Label(self.center_frame, text="", font=self.controller.normal_font, bg="white", fg="red")
         self.status_label.pack(pady=5)
                   
         from tkmacosx import Button as MacButton
-        MacButton(self, text="< Back", font=self.controller.normal_font, 
+        
+        btn_frame = tk.Frame(self, bg="white")
+        btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=20, padx=20)
+        
+        MacButton(btn_frame, text="< Batal", font=self.controller.normal_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=20, pady=10,
-                  command=self.go_back).pack(side=tk.BOTTOM, pady=20, anchor=tk.W, padx=20)
+                  command=self.go_back).pack(side=tk.LEFT)
+                  
+        MacButton(btn_frame, text="Gunakan RFID >", font=self.controller.normal_font, 
+                  bg="#ffc107", fg="black", borderless=1, padx=20, pady=10,
+                  command=self.go_to_rfid).pack(side=tk.RIGHT)
                   
     def on_show(self):
         self.status_label.config(text="Memuat Kamera...", fg="#007bff")
@@ -226,7 +249,11 @@ class FaceIDScreen(tk.Frame):
 
     def go_back(self):
         self.stop_camera()
-        self.controller.show_frame("VerifyIDScreen")
+        self.controller.show_frame("MainScreen")
+        
+    def go_to_rfid(self):
+        self.stop_camera()
+        self.controller.show_frame("RFIDScreen")
         
     def process_success(self, name):
         self.stop_camera()
@@ -247,19 +274,24 @@ class RFIDScreen(tk.Frame):
         super().__init__(parent, bg="white")
         self.controller = controller
         
-        tk.Label(self, text="Tempel Kartu Asisten Anda", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=50)
+        self.center_frame = tk.Frame(self, bg="white")
+        self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        
+        tk.Label(self.center_frame, text="Tempel Kartu Asisten Anda", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=50)
         
         # Simulating RFID tap for testing on laptop
-        self.rfid_entry = tk.Entry(self, font=self.controller.normal_font)
+        self.rfid_entry = tk.Entry(self.center_frame, font=self.controller.normal_font)
         self.rfid_entry.pack(pady=20)
         
         from tkmacosx import Button as MacButton
-        MacButton(self, text="[Simulasi Tap Kartu]", bg="green", fg="white", borderless=1, padx=20, pady=10,
+        MacButton(self.center_frame, text="[Simulasi Tap Kartu]", bg="green", fg="white", borderless=1, padx=20, pady=10,
                   command=self.simulate_success).pack(pady=5)
                   
-        MacButton(self, text="< Back", font=self.controller.normal_font, 
+        btn_frame = tk.Frame(self, bg="white")
+        btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=20, padx=20)
+        MacButton(btn_frame, text="< Kembali ke Kamera", font=self.controller.normal_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=20, pady=10,
-                  command=lambda: self.controller.show_frame("VerifyIDScreen")).pack(side=tk.BOTTOM, pady=20, anchor=tk.W, padx=20)
+                  command=lambda: self.controller.show_frame("FaceIDScreen")).pack(side=tk.LEFT)
 
     def on_show(self):
         self.rfid_entry.delete(0, tk.END)
@@ -277,44 +309,52 @@ class ShiftMutuScreen(tk.Frame):
         super().__init__(parent, bg="white")
         self.controller = controller
         
-        self.title_label = tk.Label(self, text="Pilih Shift & Mutu", font=self.controller.title_font, bg="white", fg="black")
-        self.title_label.pack(pady=5)
+        self.center_frame = tk.Frame(self, bg="white")
+        self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        
+        self.greeting_label = tk.Label(self.center_frame, text="", font=self.controller.title_font, bg="white", fg="#007bff")
+        self.greeting_label.pack(pady=(15, 10))
+        
+        self.subtitle_label = tk.Label(self.center_frame, text="Pilih Shift", font=self.controller.header_font, bg="white", fg="gray")
+        self.subtitle_label.pack(pady=(0, 15))
         
         # Legend
         legend_text = "1: Standby | 2: Piket | 3: Teaching | 4: Rapat | 5: Riset"
-        tk.Label(self, text=legend_text, font=self.controller.normal_font, bg="white", fg="gray").pack(pady=5)
+        tk.Label(self.center_frame, text=legend_text, font=self.controller.normal_font, bg="white", fg="gray").pack(pady=15)
         
         self.selected_mutu_per_shift = {r: None for r in range(5)}
         self.buttons = []
         
-        grid_frame = tk.Frame(self, bg="white")
+        grid_frame = tk.Frame(self.center_frame, bg="white")
         grid_frame.pack(pady=10)
         
         from tkmacosx import Button as MacButton
         
-        shifts = ["shift 1", "shift 2", "shift 3", "shift 4", "shift 5"]
+        shifts = ["SHIFT 1", "SHIFT 2", "SHIFT 3", "SHIFT 4", "SHIFT 5"]
         mutu_keys = ["stand by", "piket", "teaching", "rapat", "riset"]
         
         for r, shift in enumerate(shifts):
-            tk.Label(grid_frame, text=shift, font=self.controller.normal_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=20, pady=5, sticky=tk.E)
+            tk.Label(grid_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=30, pady=10, sticky=tk.E)
             
             row_buttons = []
             for c, mutu in enumerate(mutu_keys):
-                btn = MacButton(grid_frame, text=str(c+1), font=self.controller.normal_font, 
-                                bg="white", fg="#007bff", borderless=1, padx=20, pady=5,
+                btn = MacButton(grid_frame, text=str(c+1), font=self.controller.large_button_font, 
+                                bg="white", fg="#007bff", borderless=1, padx=30, pady=10,
                                 command=lambda s=shift, m=mutu, r=r, c=c: self.select_cell(s, m, r, c))
-                btn.grid(row=r, column=c+1, padx=5, pady=5)
+                btn.grid(row=r, column=c+1, padx=10, pady=10)
                 row_buttons.append(btn)
             self.buttons.append(row_buttons)
             
-        self.confirm_btn = MacButton(self, text="confirm", font=self.controller.normal_font, 
-                                     bg="#cccccc", fg="black", borderless=1, padx=40, pady=10,
+        self.confirm_btn = MacButton(self.center_frame, text="CONFIRM", font=self.controller.large_button_font, 
+                                     bg="#cccccc", fg="black", borderless=1, padx=60, pady=20,
                                      command=self.submit)
-        self.confirm_btn.pack(pady=10)
+        self.confirm_btn.pack(pady=20)
         
-        MacButton(self, text="< Back", font=self.controller.normal_font, 
-                  bg="#cccccc", fg="black", borderless=1, padx=20, pady=10,
-                  command=lambda: self.controller.show_frame("VerifyIDScreen")).pack(side=tk.BOTTOM, pady=10, anchor=tk.W, padx=20)
+        btn_frame = tk.Frame(self, bg="white")
+        btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=30, padx=30)
+        MacButton(btn_frame, text="< Batal", font=self.controller.normal_font, 
+                  bg="#cccccc", fg="black", borderless=1, padx=30, pady=15,
+                  command=lambda: self.controller.show_frame("MainScreen")).pack(side=tk.LEFT)
                   
     def select_cell(self, shift, mutu, r, c):
         # Toggle logic: if clicking the already selected mutu, unselect it
@@ -334,15 +374,15 @@ class ShiftMutuScreen(tk.Frame):
                 
         # Enable confirm button if AT LEAST ONE shift is selected
         if any(m is not None for m in self.selected_mutu_per_shift.values()):
-            self.confirm_btn.configure(bg="green", fg="white", text="confirm")
+            self.confirm_btn.configure(bg="green", fg="white", text="CONFIRM")
         else:
-            self.confirm_btn.configure(bg="#cccccc", fg="black", text="confirm")
+            self.confirm_btn.configure(bg="#cccccc", fg="black", text="CONFIRM")
         
     def submit(self):
         selected_mutus = [m for m in self.selected_mutu_per_shift.values() if m is not None]
         if not selected_mutus:
             self.confirm_btn.configure(text="Pilih minimal 1!", bg="red")
-            self.after(1000, lambda: self.confirm_btn.configure(text="confirm", bg="#cccccc"))
+            self.after(1000, lambda: self.confirm_btn.configure(text="CONFIRM", bg="#cccccc"))
             return
             
         total_mutu_value = sum(MUTU_RATES[m] for m in selected_mutus)
@@ -351,30 +391,44 @@ class ShiftMutuScreen(tk.Frame):
         
     def on_show(self):
         user = self.controller.current_user
-        self.title_label.config(text=f"Halo, {user}!\nPilih Shift & Mutu")
+        self.greeting_label.config(text=f"Halo, {user}!")
         self.selected_mutu_per_shift = {r: None for r in range(5)}
         for row in self.buttons:
             for btn in row:
                 btn.configure(bg="white", fg="#007bff")
-        self.confirm_btn.configure(bg="#cccccc", fg="black", text="confirm")
+        self.confirm_btn.configure(bg="#cccccc", fg="black", text="CONFIRM")
 
 class SuccessScreen(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg="white")
         self.controller = controller
-        self.msg_label = tk.Label(self, text="", font=self.controller.title_font, bg="white", fg="#007bff", justify=tk.CENTER)
-        self.msg_label.pack(expand=True)
+        
+        self.center_frame = tk.Frame(self, bg="white")
+        self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        
+        self.msg_label = tk.Label(self.center_frame, text="", font=self.controller.huge_msg_font, bg="white", fg="#007bff", justify=tk.CENTER)
+        self.msg_label.pack(pady=20)
+        
+        self.mutu_frame = tk.Frame(self.center_frame, bg="#ffc107", padx=8, pady=8) # Yellow border
+        
+        self.mutu_label = tk.Label(self.mutu_frame, text="", font=self.controller.title_font, bg="white", fg="black", justify=tk.CENTER, padx=30, pady=20)
+        self.mutu_label.pack()
         
     def on_show(self):
         user = self.controller.current_user
         if self.controller.attendance_type == "datang":
             msg = f"Have a great day,\n{user}!"
+            self.msg_label.config(text=msg)
+            self.mutu_frame.pack_forget()
         else:
             rp = getattr(self.controller, 'total_rp', 0)
-            msg = f"You did so well today.\nGet home safe, okay?\n\nTotal Mutu Hari Ini: Rp {rp:,}"
+            msg = f"You did so well today.\nGet home safe, okay?"
+            self.msg_label.config(text=msg)
             
-        self.msg_label.config(text=msg)
-        
+            mutu_msg = f"Total Mutu Hari Ini\nRp {rp:,}"
+            self.mutu_label.config(text=mutu_msg)
+            self.mutu_frame.pack(pady=30)
+            
         # Auto redirect back to main screen after 4 seconds
         self.after(4000, lambda: self.controller.show_frame("MainScreen"))
 
