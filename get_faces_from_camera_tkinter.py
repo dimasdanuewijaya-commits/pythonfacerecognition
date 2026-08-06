@@ -7,282 +7,377 @@ import time
 import logging
 import tkinter as tk
 from tkinter import font as tkFont
+from tkinter import messagebox, ttk
 from PIL import Image, ImageTk
 
-# Use frontal face detector of Dlib
+# ─── Dlib face detector ───────────────────────────────────────────────────────
 detector = dlib.get_frontal_face_detector()
+
+# ─── Design constants ─────────────────────────────────────────────────────────
+BG_COLOR      = "#1a1a2e"
+PANEL_COLOR   = "#16213e"
+ACCENT_COLOR  = "#0f3460"
+GREEN_COLOR   = "#4ade80"
+RED_COLOR     = "#f87171"
+YELLOW_COLOR  = "#fbbf24"
+WHITE_COLOR   = "#f1f5f9"
+MUTED_COLOR   = "#94a3b8"
+BTN_PRIMARY   = "#0ea5e9"
+BTN_DANGER    = "#ef4444"
+BTN_SUCCESS   = "#22c55e"
+
+CAM_WIDTH     = 480
+CAM_HEIGHT    = 360
+# Kamera juga di-set ke resolusi ini dari awal agar lebih ringan
+DETECT_EVERY  = 3   # Jalankan face detection hanya setiap N frame (hemat CPU)
 
 
 class Face_Register:
     def __init__(self):
-
-        self.current_frame_faces_cnt = 0  #  cnt for counting faces in current frame
-        self.existing_faces_cnt = 0  # cnt for counting saved faces
-        self.ss_cnt = 0  #  cnt for screen shots
-
-        # Tkinter GUI
-        self.win = tk.Tk()
-        self.win.title("Face Register")
-
-        # PLease modify window size here if needed
-        self.win.geometry("1000x500")
-
-        # GUI left part
-        self.frame_left_camera = tk.Frame(self.win)
-        self.label = tk.Label(self.win)
-        self.label.pack(side=tk.LEFT)
-        self.frame_left_camera.pack()
-
-        # GUI right part
-        self.frame_right_info = tk.Frame(self.win)
-        self.label_cnt_face_in_database = tk.Label(self.frame_right_info, text=str(self.existing_faces_cnt))
-        self.label_fps_info = tk.Label(self.frame_right_info, text="")
-        self.input_name = tk.Entry(self.frame_right_info)
-        self.input_name_char = ""
-        self.label_warning = tk.Label(self.frame_right_info)
-        self.label_face_cnt = tk.Label(self.frame_right_info, text="Faces in current frame: ")
-        self.log_all = tk.Label(self.frame_right_info)
-
-        self.font_title = tkFont.Font(family='Helvetica', size=20, weight='bold')
-        self.font_step_title = tkFont.Font(family='Helvetica', size=15, weight='bold')
-        self.font_warning = tkFont.Font(family='Helvetica', size=15, weight='bold')
+        self.current_frame_faces_cnt = 0
+        self.existing_faces_cnt      = 0
+        self.ss_cnt                  = 0
+        self.frame_cnt               = 0
 
         self.path_photos_from_camera = "data/data_faces_from_camera/"
-        self.current_face_dir = ""
-        self.font = cv2.FONT_ITALIC
+        self.current_face_dir        = ""
+        self.input_name_char         = ""
+        self.font                    = cv2.FONT_HERSHEY_SIMPLEX
 
-        # Current frame and face ROI position
-        self.current_frame = np.ndarray
-        self.face_ROI_image = np.ndarray
-        self.face_ROI_width_start = 0
-        self.face_ROI_height_start = 0
-        self.face_ROI_width = 0
-        self.face_ROI_height = 0
-        self.ww = 0
-        self.hh = 0
+        self.current_frame           = None
+        self.face_ROI_width_start    = 0
+        self.face_ROI_height_start   = 0
+        self.face_ROI_width          = 0
+        self.face_ROI_height         = 0
+        self.ww = self.hh            = 0
+        self.detected_faces          = []   # Cache hasil deteksi
 
-        self.out_of_range_flag = False
-        self.face_folder_created_flag = False
+        self.out_of_range_flag       = False
+        self.face_folder_created_flag= False
 
         # FPS
-        self.frame_time = 0
-        self.frame_start_time = 0
-        self.fps = 0
-        self.fps_show = 0
-        self.start_time = time.time()
+        self.frame_time              = 0
+        self.frame_start_time        = time.time()
+        self.fps                     = 0
 
-        self.cap = cv2.VideoCapture(0)  # Get video stream from camera
+        # ── Kamera ─────────────────────────────────────────────────────────
+        self.cap = cv2.VideoCapture(0)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH,  CAM_WIDTH)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)       # Kurangi buffer delay
 
-        # self.cap = cv2.VideoCapture("test.mp4")   # Input local video
+        # ── Tkinter ────────────────────────────────────────────────────────
+        self._build_window()
 
-    #  Delete old face folders
+    # ─────────────────────────────────────────────────────────────────────────
+    # BUILD UI
+    # ─────────────────────────────────────────────────────────────────────────
+    def _build_window(self):
+        self.win = tk.Tk()
+        self.win.title("Face Register — Lab Attendance")
+        self.win.configure(bg=BG_COLOR)
+        self.win.geometry("820x580")
+
+        # ── Fonts ──────────────────────────────────────────────────────────
+        self.font_title   = tkFont.Font(family='Helvetica', size=18, weight='bold')
+        self.font_label   = tkFont.Font(family='Helvetica', size=11)
+        self.font_step    = tkFont.Font(family='Helvetica', size=12, weight='bold')
+        self.font_mono    = tkFont.Font(family='Courier',   size=11)
+        self.font_big_num = tkFont.Font(family='Helvetica', size=28, weight='bold')
+
+        # ── Header bar ─────────────────────────────────────────────────────
+        header = tk.Frame(self.win, bg=ACCENT_COLOR, height=50)
+        header.pack(fill=tk.X)
+        tk.Label(header, text="🎓  Lab Attendance — Face Register",
+                 font=self.font_title, bg=ACCENT_COLOR, fg=WHITE_COLOR,
+                 padx=20, pady=10).pack(side=tk.LEFT)
+
+        # ── Main body ──────────────────────────────────────────────────────
+        body = tk.Frame(self.win, bg=BG_COLOR)
+        body.pack(fill=tk.BOTH, expand=True, padx=16, pady=12)
+
+        # Left: camera
+        left = tk.Frame(body, bg=BG_COLOR)
+        left.pack(side=tk.LEFT, fill=tk.BOTH)
+
+        cam_border = tk.Frame(left, bg=ACCENT_COLOR, bd=2, relief=tk.FLAT)
+        cam_border.pack()
+        self.lbl_camera = tk.Label(cam_border, bg="black",
+                                   width=CAM_WIDTH, height=CAM_HEIGHT)
+        self.lbl_camera.pack()
+
+        # Status bar below camera
+        status_bar = tk.Frame(left, bg=PANEL_COLOR)
+        status_bar.pack(fill=tk.X, pady=(6, 0))
+
+        self.lbl_fps = tk.Label(status_bar, text="FPS: —", font=self.font_mono,
+                                bg=PANEL_COLOR, fg=GREEN_COLOR, padx=10)
+        self.lbl_fps.pack(side=tk.LEFT)
+
+        self.lbl_face_cnt = tk.Label(status_bar, text="Faces: 0", font=self.font_mono,
+                                     bg=PANEL_COLOR, fg=YELLOW_COLOR, padx=10)
+        self.lbl_face_cnt.pack(side=tk.LEFT)
+
+        self.lbl_range_warn = tk.Label(status_bar, text="", font=self.font_mono,
+                                       bg=PANEL_COLOR, fg=RED_COLOR, padx=10)
+        self.lbl_range_warn.pack(side=tk.LEFT)
+
+        # Right: control panel
+        right = tk.Frame(body, bg=PANEL_COLOR, width=300, bd=0)
+        right.pack(side=tk.LEFT, fill=tk.Y, padx=(14, 0))
+        right.pack_propagate(False)
+
+        self._build_right_panel(right)
+
+    def _card(self, parent, title, row_offset=0):
+        """Helper: creates a labelled card section."""
+        sep = tk.Frame(parent, bg=ACCENT_COLOR, height=1)
+        sep.pack(fill=tk.X, padx=12, pady=(12, 0))
+        tk.Label(parent, text=title, font=self.font_step,
+                 bg=PANEL_COLOR, fg=BTN_PRIMARY).pack(anchor=tk.W, padx=16, pady=(6, 2))
+
+    def _btn(self, parent, text, command, color=BTN_PRIMARY, fg=WHITE_COLOR, **kw):
+        b = tk.Button(parent, text=text, command=command,
+                      font=self.font_label,
+                      cursor="hand2", padx=12, pady=6, **kw)
+        return b
+
+    def _build_right_panel(self, panel):
+        # ── Stats ──────────────────────────────────────────────────────────
+        stats = tk.Frame(panel, bg=PANEL_COLOR)
+        stats.pack(fill=tk.X, padx=12, pady=12)
+
+        tk.Label(stats, text="People in Database",
+                 font=self.font_label, bg=PANEL_COLOR, fg=MUTED_COLOR).pack()
+        self.lbl_db_count = tk.Label(stats, text="—", font=self.font_big_num,
+                                     bg=PANEL_COLOR, fg=WHITE_COLOR)
+        self.lbl_db_count.pack()
+
+        tk.Label(stats, text="Photos saved (current person)",
+                 font=self.font_label, bg=PANEL_COLOR, fg=MUTED_COLOR).pack(pady=(8, 0))
+        self.lbl_ss_count = tk.Label(stats, text="0", font=self.font_big_num,
+                                     bg=PANEL_COLOR, fg=GREEN_COLOR)
+        self.lbl_ss_count.pack()
+
+        # ── Step 1 ─────────────────────────────────────────────────────────
+        self._card(panel, "Step 1 — Clear All Data")
+        self._btn(panel, "🗑  Clear All Faces", self.GUI_clear_data,
+                  color=BTN_DANGER).pack(fill=tk.X, padx=16, pady=(4, 0))
+
+        # ── Step 2 ─────────────────────────────────────────────────────────
+        self._card(panel, "Step 2 — Register New Person")
+
+        name_row = tk.Frame(panel, bg=PANEL_COLOR)
+        name_row.pack(fill=tk.X, padx=16, pady=(4, 0))
+        tk.Label(name_row, text="Name:", font=self.font_label,
+                 bg=PANEL_COLOR, fg=MUTED_COLOR).pack(side=tk.LEFT)
+        self.input_name = tk.Entry(name_row, font=self.font_label,
+                                   bg=ACCENT_COLOR, fg=WHITE_COLOR,
+                                   insertbackground=WHITE_COLOR,
+                                   relief=tk.FLAT, bd=4)
+        self.input_name.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
+        self.input_name.bind("<Return>", lambda e: self.GUI_get_input_name())
+
+        self._btn(panel, "➕  Create Folder", self.GUI_get_input_name,
+                  color=BTN_PRIMARY).pack(fill=tk.X, padx=16, pady=(6, 0))
+
+        # ── Step 3 ─────────────────────────────────────────────────────────
+        self._card(panel, "Step 3 — Capture Photo")
+
+        hint = tk.Label(panel,
+                        text="Position your face inside the box,\nthen click Capture.",
+                        font=self.font_label, bg=PANEL_COLOR, fg=MUTED_COLOR,
+                        justify=tk.LEFT)
+        hint.pack(anchor=tk.W, padx=16, pady=(4, 0))
+
+        self._btn(panel, "📸  Capture Face", self.save_current_face,
+                  color=BTN_SUCCESS).pack(fill=tk.X, padx=16, pady=(6, 0))
+
+        # ── Log ────────────────────────────────────────────────────────────
+        sep = tk.Frame(panel, bg=ACCENT_COLOR, height=1)
+        sep.pack(fill=tk.X, padx=12, pady=12)
+        self.lbl_log = tk.Label(panel, text="Ready.", font=self.font_mono,
+                                bg=PANEL_COLOR, fg=GREEN_COLOR,
+                                wraplength=260, justify=tk.LEFT)
+        self.lbl_log.pack(anchor=tk.W, padx=16)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # BUSINESS LOGIC
+    # ─────────────────────────────────────────────────────────────────────────
     def GUI_clear_data(self):
-        #  "/data_faces_from_camera/person_x/"...
-        folders_rd = os.listdir(self.path_photos_from_camera)
-        for i in range(len(folders_rd)):
-            shutil.rmtree(self.path_photos_from_camera + folders_rd[i])
+        if not messagebox.askyesno("Confirm", "Delete ALL face data and CSV?"):
+            return
+        for folder in os.listdir(self.path_photos_from_camera):
+            path = os.path.join(self.path_photos_from_camera, folder)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
         if os.path.isfile("data/features_all.csv"):
             os.remove("data/features_all.csv")
-        self.label_cnt_face_in_database['text'] = "0"
         self.existing_faces_cnt = 0
-        self.log_all["text"] = "Face images and `features_all.csv` removed!"
+        self.lbl_db_count["text"] = "0"
+        self._log("All data cleared.", color=RED_COLOR)
 
     def GUI_get_input_name(self):
-        self.input_name_char = self.input_name.get()
+        self.input_name_char = self.input_name.get().strip()
+        if not self.input_name_char:
+            self._log("Please enter a name first!", color=RED_COLOR)
+            return
         self.create_face_folder()
-        self.label_cnt_face_in_database['text'] = str(self.existing_faces_cnt)
+        self.lbl_db_count["text"] = str(self.existing_faces_cnt)
 
-    def GUI_info(self):
-        tk.Label(self.frame_right_info,
-                 text="Face register",
-                 font=self.font_title).grid(row=0, column=0, columnspan=3, sticky=tk.W, padx=2, pady=20)
+    def _log(self, msg, color=GREEN_COLOR):
+        self.lbl_log["text"] = msg
+        self.lbl_log["fg"]   = color
 
-        tk.Label(self.frame_right_info, text="FPS: ").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
-        self.label_fps_info.grid(row=1, column=1, sticky=tk.W, padx=5, pady=2)
-
-        tk.Label(self.frame_right_info, text="Faces in database: ").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
-        self.label_cnt_face_in_database.grid(row=2, column=1, sticky=tk.W, padx=5, pady=2)
-
-        tk.Label(self.frame_right_info,
-                 text="Faces in current frame: ").grid(row=3, column=0, columnspan=2, sticky=tk.W, padx=5, pady=2)
-        self.label_face_cnt.grid(row=3, column=2, columnspan=3, sticky=tk.W, padx=5, pady=2)
-
-        self.label_warning.grid(row=4, column=0, columnspan=3, sticky=tk.W, padx=5, pady=2)
-
-        # Step 1: Clear old data
-        tk.Label(self.frame_right_info,
-                 font=self.font_step_title,
-                 text="Step 1: Clear face photos").grid(row=5, column=0, columnspan=2, sticky=tk.W, padx=5, pady=20)
-        tk.Button(self.frame_right_info,
-                  text='Clear',
-                  command=self.GUI_clear_data).grid(row=6, column=0, columnspan=3, sticky=tk.W, padx=5, pady=2)
-
-        # Step 2: Input name and create folders for face
-        tk.Label(self.frame_right_info,
-                 font=self.font_step_title,
-                 text="Step 2: Input name").grid(row=7, column=0, columnspan=2, sticky=tk.W, padx=5, pady=20)
-
-        tk.Label(self.frame_right_info, text="Name: ").grid(row=8, column=0, sticky=tk.W, padx=5, pady=0)
-        self.input_name.grid(row=8, column=1, sticky=tk.W, padx=0, pady=2)
-
-        tk.Button(self.frame_right_info,
-                  text='Input',
-                  command=self.GUI_get_input_name).grid(row=8, column=2, padx=5)
-
-        # Step 3: Save current face in frame
-        tk.Label(self.frame_right_info,
-                 font=self.font_step_title,
-                 text="Step 3: Save face image").grid(row=9, column=0, columnspan=2, sticky=tk.W, padx=5, pady=20)
-
-        tk.Button(self.frame_right_info,
-                  text='Save current face',
-                  command=self.save_current_face).grid(row=10, column=0, columnspan=3, sticky=tk.W)
-
-        # Show log in GUI
-        self.log_all.grid(row=11, column=0, columnspan=20, sticky=tk.W, padx=5, pady=20)
-
-        self.frame_right_info.pack()
-
-    # Mkdir for saving photos and csv
     def pre_work_mkdir(self):
-        # Create folders to save face images and csv
-        if os.path.isdir(self.path_photos_from_camera):
-            pass
-        else:
-            os.mkdir(self.path_photos_from_camera)
+        os.makedirs(self.path_photos_from_camera, exist_ok=True)
 
-    # Start from person_x+1
     def check_existing_faces_cnt(self):
-        if os.listdir("data/data_faces_from_camera/"):
-            # Get the order of latest person
-            person_list = os.listdir("data/data_faces_from_camera/")
-            person_num_list = []
-            for person in person_list:
-                person_order = person.split('_')[1].split('_')[0]
-                person_num_list.append(int(person_order))
-            self.existing_faces_cnt = max(person_num_list)
-
-        # Start from person_1
+        persons = [d for d in os.listdir(self.path_photos_from_camera)
+                   if os.path.isdir(os.path.join(self.path_photos_from_camera, d))]
+        if persons:
+            nums = []
+            for p in persons:
+                try:
+                    nums.append(int(p.split('_')[1]))
+                except (IndexError, ValueError):
+                    pass
+            self.existing_faces_cnt = max(nums) if nums else 0
         else:
             self.existing_faces_cnt = 0
+        self.lbl_db_count["text"] = str(self.existing_faces_cnt)
 
-    # Update FPS of Video stream
     def update_fps(self):
         now = time.time()
-        #  Refresh fps per second
-        if str(self.start_time).split(".")[0] != str(now).split(".")[0]:
-            self.fps_show = self.fps
-        self.start_time = now
-        self.frame_time = now - self.frame_start_time
-        self.fps = 1.0 / self.frame_time
+        elapsed = now - self.frame_start_time
+        self.fps = 1.0 / elapsed if elapsed > 0 else 0
         self.frame_start_time = now
-
-        self.label_fps_info["text"] = str(self.fps.__round__(2))
+        self.lbl_fps["text"] = f"FPS: {self.fps:.1f}"
 
     def create_face_folder(self):
-        #  Create the folders for saving faces
         self.existing_faces_cnt += 1
-        if self.input_name_char:
-            self.current_face_dir = self.path_photos_from_camera + \
-                                    "person_" + str(self.existing_faces_cnt) + "_" + \
-                                    self.input_name_char
-        else:
-            self.current_face_dir = self.path_photos_from_camera + \
-                                    "person_" + str(self.existing_faces_cnt)
-        os.makedirs(self.current_face_dir)
-        self.log_all["text"] = "\"" + self.current_face_dir + "/\" created!"
-        logging.info("\n%-40s %s", "Create folders:", self.current_face_dir)
-
-        self.ss_cnt = 0  #  Clear the cnt of screen shots
-        self.face_folder_created_flag = True  # Face folder already created
+        folder_name = f"person_{self.existing_faces_cnt}_{self.input_name_char}"
+        self.current_face_dir = os.path.join(self.path_photos_from_camera, folder_name)
+        os.makedirs(self.current_face_dir, exist_ok=True)
+        self.ss_cnt = 0
+        self.lbl_ss_count["text"] = "0"
+        self.face_folder_created_flag = True
+        self._log(f"Folder created:\n{folder_name}")
+        logging.info("Created folder: %s", self.current_face_dir)
 
     def save_current_face(self):
-        if self.face_folder_created_flag:
-            if self.current_frame_faces_cnt == 1:
-                if not self.out_of_range_flag:
-                    self.ss_cnt += 1
-                    #  Create blank image according to the size of face detected
-                    self.face_ROI_image = np.zeros((int(self.face_ROI_height * 2), self.face_ROI_width * 2, 3),
-                                                   np.uint8)
-                    for ii in range(self.face_ROI_height * 2):
-                        for jj in range(self.face_ROI_width * 2):
-                            self.face_ROI_image[ii][jj] = self.current_frame[self.face_ROI_height_start - self.hh + ii][
-                                self.face_ROI_width_start - self.ww + jj]
-                    self.log_all["text"] = "\"" + self.current_face_dir + "/img_face_" + str(
-                        self.ss_cnt) + ".jpg\"" + " saved!"
-                    self.face_ROI_image = cv2.cvtColor(self.face_ROI_image, cv2.COLOR_BGR2RGB)
+        if not self.face_folder_created_flag:
+            self._log("Run Step 2 first!", color=RED_COLOR)
+            return
+        if self.current_frame_faces_cnt != 1:
+            self._log("Need exactly 1 face in frame!", color=YELLOW_COLOR)
+            return
+        if self.out_of_range_flag:
+            self._log("Face out of range! Move closer to center.", color=RED_COLOR)
+            return
 
-                    cv2.imwrite(self.current_face_dir + "/img_face_" + str(self.ss_cnt) + ".jpg", self.face_ROI_image)
-                    logging.info("%-40s %s/img_face_%s.jpg", "Save into：",
-                                 str(self.current_face_dir), str(self.ss_cnt) + ".jpg")
-                else:
-                    self.log_all["text"] = "Please do not out of range!"
-            else:
-                self.log_all["text"] = "No face in current frame!"
-        else:
-            self.log_all["text"] = "Please run step 2!"
+        self.ss_cnt += 1
+        # Fast numpy crop instead of pixel-by-pixel loop
+        t, b = self.face_ROI_height_start, self.face_ROI_height_start + self.face_ROI_height
+        l, r = self.face_ROI_width_start,  self.face_ROI_width_start + self.face_ROI_width
+        pad_y = self.hh
+        pad_x = self.ww
+        h, w  = self.current_frame.shape[:2]
+        t_pad = max(0, t - pad_y)
+        b_pad = min(h, b + pad_y)
+        l_pad = max(0, l - pad_x)
+        r_pad = min(w, r + pad_x)
+
+        face_crop = self.current_frame[t_pad:b_pad, l_pad:r_pad]
+        # current_frame is already RGB from get_frame; convert to BGR for imwrite
+        face_bgr  = cv2.cvtColor(face_crop, cv2.COLOR_RGB2BGR)
+        save_path = os.path.join(self.current_face_dir, f"img_face_{self.ss_cnt}.jpg")
+        cv2.imwrite(save_path, face_bgr)
+
+        self.lbl_ss_count["text"] = str(self.ss_cnt)
+        self._log(f"✅ Saved: img_face_{self.ss_cnt}.jpg")
+        logging.info("Saved: %s", save_path)
 
     def get_frame(self):
-        try:
-            if self.cap.isOpened():
-                ret, frame = self.cap.read()
-                frame = cv2.resize(frame, (640,480))
+        if self.cap.isOpened():
+            ret, frame = self.cap.read()
+            if ret:
+                frame = cv2.flip(frame, 1)  # Mirror / selfie view
+                frame = cv2.resize(frame, (CAM_WIDTH, CAM_HEIGHT),
+                                   interpolation=cv2.INTER_LINEAR)
                 return ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        except:
-            print("Error: No video input!!!")
+        return False, None
 
-    #  Main process of face detection and saving
+    # ─── Main loop ────────────────────────────────────────────────────────────
     def process(self):
+        self.frame_cnt += 1
         ret, self.current_frame = self.get_frame()
-        faces = detector(self.current_frame, 0)
-        # Get frame
+
         if ret:
             self.update_fps()
-            self.label_face_cnt["text"] = str(len(faces))
-            #  Face detected
-            if len(faces) != 0:
-                #   Show the ROI of faces
-                for k, d in enumerate(faces):
-                    self.face_ROI_width_start = d.left()
-                    self.face_ROI_height_start = d.top()
-                    #  Compute the size of rectangle box
-                    self.face_ROI_height = (d.bottom() - d.top())
-                    self.face_ROI_width = (d.right() - d.left())
-                    self.hh = int(self.face_ROI_height / 2)
-                    self.ww = int(self.face_ROI_width / 2)
 
-                    # If the size of ROI > 480x640
-                    if (d.right() + self.ww) > 640 or (d.bottom() + self.hh > 480) or (d.left() - self.ww < 0) or (
-                            d.top() - self.hh < 0):
-                        self.label_warning["text"] = "OUT OF RANGE"
-                        self.label_warning['fg'] = 'red'
-                        self.out_of_range_flag = True
-                        color_rectangle = (255, 0, 0)
-                    else:
-                        self.out_of_range_flag = False
-                        self.label_warning["text"] = ""
-                        color_rectangle = (255, 255, 255)
-                    self.current_frame = cv2.rectangle(self.current_frame,
-                                                       tuple([d.left() - self.ww, d.top() - self.hh]),
-                                                       tuple([d.right() + self.ww, d.bottom() + self.hh]),
-                                                       color_rectangle, 2)
-            self.current_frame_faces_cnt = len(faces)
+            # ── Face detection: only every DETECT_EVERY frames ────────────
+            if self.frame_cnt % DETECT_EVERY == 0:
+                self.detected_faces = detector(self.current_frame, 0)
+                self.current_frame_faces_cnt = len(self.detected_faces)
+                self.lbl_face_cnt["text"] = f"Faces: {self.current_frame_faces_cnt}"
 
-            # Convert PIL.Image.Image to PIL.Image.PhotoImage
-            img_Image = Image.fromarray(self.current_frame)
-            img_PhotoImage = ImageTk.PhotoImage(image=img_Image)
-            self.label.img_tk = img_PhotoImage
-            self.label.configure(image=img_PhotoImage)
+            # ── Draw bounding boxes ───────────────────────────────────────
+            display = self.current_frame.copy()
+            for k, d in enumerate(self.detected_faces):
+                self.face_ROI_width_start  = d.left()
+                self.face_ROI_height_start = d.top()
+                self.face_ROI_height = d.bottom() - d.top()
+                self.face_ROI_width  = d.right()  - d.left()
+                self.hh = self.face_ROI_height // 2
+                self.ww = self.face_ROI_width  // 2
 
-        # Refresh frame
-        self.win.after(20, self.process)
+                out = ((d.right() + self.ww) > CAM_WIDTH  or
+                       (d.bottom() + self.hh) > CAM_HEIGHT or
+                       (d.left() - self.ww)  < 0          or
+                       (d.top()  - self.hh)  < 0)
 
+                if out:
+                    self.out_of_range_flag = True
+                    self.lbl_range_warn["text"] = "⚠ OUT OF RANGE"
+                    color = (248, 113, 113)  # red
+                else:
+                    self.out_of_range_flag = False
+                    self.lbl_range_warn["text"] = ""
+                    color = (74, 222, 128)   # green
+
+                # Outer guidance box
+                cv2.rectangle(display,
+                              (d.left() - self.ww, d.top() - self.hh),
+                              (d.right() + self.ww, d.bottom() + self.hh),
+                              color, 1)
+                # Inner tight box
+                cv2.rectangle(display,
+                              (d.left(), d.top()),
+                              (d.right(), d.bottom()),
+                              color, 2)
+                cv2.putText(display, f"Face {k+1}",
+                            (d.left(), d.top() - 8),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 1)
+
+            # ── Overlay HUD ───────────────────────────────────────────────
+            cv2.putText(display, f"Photos: {self.ss_cnt}", (8, 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
+
+            # ── Push to Tkinter label ─────────────────────────────────────
+            img = ImageTk.PhotoImage(Image.fromarray(display))
+            self.lbl_camera.img_tk = img
+            self.lbl_camera.configure(image=img)
+
+        self.win.after(16, self.process)   # ~60 FPS target
+
+    # ─────────────────────────────────────────────────────────────────────────
     def run(self):
         self.pre_work_mkdir()
         self.check_existing_faces_cnt()
-        self.GUI_info()
         self.process()
         self.win.mainloop()
+        self.cap.release()
 
 
 def main():

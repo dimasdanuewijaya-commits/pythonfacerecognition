@@ -1,4 +1,4 @@
-# Extract features from images and save into "features_all.csv"
+    # Extract features from images and save into "features_all.csv"
 
 import os
 import dlib
