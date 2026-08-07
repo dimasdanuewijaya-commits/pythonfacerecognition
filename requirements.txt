@@ -6,7 +6,8 @@ opencv-python
 Flask
 requests
 
-# Library khusus Hardware Raspberry Pi (Install nanti saat di Raspberry Pi)
-# RPi.GPIO
-# spidev
-# mfrc522
+# Library Hardware Raspberry Pi
+RPi.GPIO
+spidev
+mfrc522
+gpiozero

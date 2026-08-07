@@ -6,6 +6,7 @@ from datetime import datetime
 import cv2
 from PIL import Image, ImageTk
 from attendance_taker import FaceRecognizerService
+import hardware_manager
 
 # Cross-platform button support (tkmacosx is only for Mac)
 try:
@@ -49,6 +50,10 @@ class KioskGUI(tk.Tk):
         self.current_user = None
         self.attendance_type = None # "datang" or "pulang"
         self.recognizer = None
+        
+        # Hardware Controllers
+        self.led = hardware_manager.LEDController()
+        self.rfid = hardware_manager.RFIDScanner()
         
         # Load AI models in background to avoid freezing the startup UI
         import threading
@@ -244,12 +249,17 @@ class FaceIDScreen(tk.Frame):
                 
                 if recognized_name and time.time() > getattr(self, 'camera_ready_time', 0):
                     self.is_processing = True
+                    self.controller.led.success(3.0)
                     self.status_label.config(text=f"Welcome {recognized_name}!", fg="green")
                     self.after(1000, lambda n=recognized_name: self.process_success(n))
                     return # Stop looping
                 else:
                     if results:
                         self.status_label.config(text="Wajah tidak dikenal", fg="red")
+                        if not getattr(self, 'is_error_led_on', False):
+                            self.controller.led.error(2.0)
+                            self.is_error_led_on = True
+                            self.after(2000, lambda: setattr(self, 'is_error_led_on', False))
                     else:
                         self.status_label.config(text="")
                         
@@ -306,18 +316,33 @@ class RFIDScreen(tk.Frame):
         btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=20, padx=20)
         MacButton(btn_frame, text="< Kembali ke Kamera", font=self.controller.normal_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=20, pady=10,
-                  command=lambda: self.controller.show_frame("FaceIDScreen")).pack(side=tk.LEFT)
+                  command=self.go_back).pack(side=tk.LEFT)
 
     def on_show(self):
         self.rfid_entry.delete(0, tk.END)
         self.rfid_entry.focus()
+        self.controller.rfid.start_scanning(self._on_rfid_success)
         
-    def simulate_success(self):
-        self.controller.current_user = "Dimas (Asisten)"
+    def _on_rfid_success(self, uid, name):
+        # Dipanggil oleh thread latar belakang, pastikan update UI dilakukan di Main Thread
+        self.after(0, lambda: self._handle_rfid_success(uid, name))
+        
+    def _handle_rfid_success(self, uid, name):
+        self.controller.led.success(3.0)
+        self.rfid_entry.delete(0, tk.END)
+        self.rfid_entry.insert(0, uid)
+        self.controller.current_user = name
         if self.controller.attendance_type == "datang":
             self.controller.show_frame("SuccessScreen")
         else:
             self.controller.show_frame("ShiftMutuScreen")
+            
+    def go_back(self):
+        self.controller.rfid.stop_scanning()
+        self.controller.show_frame("FaceIDScreen")
+        
+    def simulate_success(self):
+        self._handle_rfid_success("SIMULATION_123", "Dimas (Asisten)")
 
 class ShiftMutuScreen(tk.Frame):
     def __init__(self, parent, controller):
