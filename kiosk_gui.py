@@ -7,6 +7,12 @@ import cv2
 from PIL import Image, ImageTk
 from attendance_taker import FaceRecognizerService
 
+# Cross-platform button support (tkmacosx is only for Mac)
+try:
+    from tkmacosx import Button as MacButton
+except ImportError:
+    MacButton = tk.Button
+
 # Konstanta Nilai Mutu
 MUTU_RATES = {
     "stand by": 1.0,
@@ -52,7 +58,7 @@ class KioskGUI(tk.Tk):
         self.container.grid_columnconfigure(0, weight=1)
         
         self.frames = {}
-        for F in (MainScreen, FaceIDScreen, RFIDScreen, ShiftMutuScreen, SuccessScreen):
+        for F in (MainScreen, FaceIDScreen, RFIDScreen, ShiftMutuScreen, SuccessScreen, AdminLoginScreen):
             page_name = F.__name__
             frame = F(parent=self.container, controller=self)
             self.frames[page_name] = frame
@@ -95,9 +101,15 @@ class MainScreen(tk.Frame):
             logo_img = Image.open("logo.jpeg")
             logo_img.thumbnail((160, 160))
             self.logo_photo = ImageTk.PhotoImage(logo_img)
-            tk.Label(header_frame, image=self.logo_photo, bg="white").pack(pady=10)
+            self.logo_label = tk.Label(header_frame, image=self.logo_photo, bg="white")
+            self.logo_label.pack(pady=10)
         except Exception as e:
-            pass
+            print("Logo not found, text fallback used")
+            self.logo_label = tk.Label(self.center_frame, text="LOGO", font=self.controller.title_font, bg="white")
+            self.logo_label.pack(pady=10)
+            
+        # Bind hidden admin login to the logo
+        self.logo_label.bind("<Button-1>", lambda e: self.controller.show_frame("AdminLoginScreen"))
         
         # Clock
         self.time_label = tk.Label(self.center_frame, text="", font=self.controller.huge_time_font, bg="white", fg="black")
@@ -108,7 +120,7 @@ class MainScreen(tk.Frame):
         
         self.update_clock()
         
-        from tkmacosx import Button as MacButton
+
         
         # Buttons
         btn_frame = tk.Frame(self.center_frame, bg="white")
@@ -163,7 +175,7 @@ class FaceIDScreen(tk.Frame):
         self.status_label = tk.Label(self.center_frame, text="", font=self.controller.normal_font, bg="white", fg="red")
         self.status_label.pack(pady=5)
                   
-        from tkmacosx import Button as MacButton
+
         
         btn_frame = tk.Frame(self, bg="white")
         btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=20, padx=20)
@@ -283,7 +295,7 @@ class RFIDScreen(tk.Frame):
         self.rfid_entry = tk.Entry(self.center_frame, font=self.controller.normal_font)
         self.rfid_entry.pack(pady=20)
         
-        from tkmacosx import Button as MacButton
+
         MacButton(self.center_frame, text="[Simulasi Tap Kartu]", bg="green", fg="white", borderless=1, padx=20, pady=10,
                   command=self.simulate_success).pack(pady=5)
                   
@@ -328,7 +340,7 @@ class ShiftMutuScreen(tk.Frame):
         grid_frame = tk.Frame(self.center_frame, bg="white")
         grid_frame.pack(pady=10)
         
-        from tkmacosx import Button as MacButton
+
         
         shifts = ["SHIFT 1", "SHIFT 2", "SHIFT 3", "SHIFT 4", "SHIFT 5"]
         mutu_keys = ["stand by", "piket", "teaching", "rapat", "riset"]
@@ -431,6 +443,93 @@ class SuccessScreen(tk.Frame):
             
         # Auto redirect back to main screen after 4 seconds
         self.after(4000, lambda: self.controller.show_frame("MainScreen"))
+
+class AdminLoginScreen(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg="white")
+        self.controller = controller
+        
+        self.center_frame = tk.Frame(self, bg="white")
+        self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        
+        tk.Label(self.center_frame, text="Admin PIN", font=self.controller.title_font, bg="white", fg="black").pack(pady=20)
+        
+        self.pin_var = tk.StringVar()
+        self.pin_display = tk.Label(self.center_frame, textvariable=self.pin_var, font=self.controller.title_font, bg="#f0f0f0", fg="#007bff", width=10)
+        self.pin_display.pack(pady=20)
+        
+        grid_frame = tk.Frame(self.center_frame, bg="white")
+        grid_frame.pack()
+        
+        keys = [
+            ['1', '2', '3'],
+            ['4', '5', '6'],
+            ['7', '8', '9'],
+            ['Clear', '0', 'OK']
+        ]
+        
+
+        for r, row in enumerate(keys):
+            for c, key in enumerate(row):
+                btn = MacButton(grid_frame, text=key, font=self.controller.large_button_font,
+                                bg="#e0e0e0", fg="black", borderless=1, padx=20, pady=20,
+                                command=lambda k=key: self.press(k))
+                btn.grid(row=r, column=c, padx=10, pady=10)
+                
+        btn_frame = tk.Frame(self, bg="white")
+        btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=30, padx=30)
+        MacButton(btn_frame, text="< Batal", font=self.controller.normal_font, 
+                  bg="#cccccc", fg="black", borderless=1, padx=30, pady=15,
+                  command=self.cancel).pack(side=tk.LEFT)
+                  
+    def on_show(self):
+        self.pin_var.set("")
+                  
+    def press(self, key):
+        if key == 'Clear':
+            self.pin_var.set("")
+        elif key == 'OK':
+            if self.pin_var.get() == "123":
+                self.pin_var.set("")
+                self.launch_register()
+            else:
+                self.pin_var.set("SALAH")
+                self.after(1000, lambda: self.pin_var.set(""))
+        else:
+            current = self.pin_var.get()
+            if current == "SALAH": current = ""
+            if len(current) < 6:
+                self.pin_var.set(current + key)
+                
+    def cancel(self):
+        self.pin_var.set("")
+        self.controller.show_frame("MainScreen")
+        
+    def launch_register(self):
+        import subprocess
+        import sys
+        import threading
+        
+        self.controller.show_frame("MainScreen")
+        was_fullscreen = self.controller.attributes("-fullscreen")
+        
+        # Sembunyikan Kiosk GUI sepenuhnya agar aplikasi Register bisa muncul ke depan
+        self.controller.withdraw()
+            
+        def run_app():
+            subprocess.run([sys.executable, "get_faces_from_camera_tkinter.py"])
+            
+            def restore_kiosk():
+                self.controller.deiconify()
+                # Angkat kembali window kiosk ke paling depan
+                self.controller.lift()
+                self.controller.focus_force()
+                if was_fullscreen:
+                    self.controller.attributes("-fullscreen", True)
+                    
+            self.controller.after(0, restore_kiosk)
+                
+        threading.Thread(target=run_app, daemon=True).start()
 
 if __name__ == "__main__":
     app = KioskGUI()

@@ -26,8 +26,8 @@ BTN_PRIMARY   = "#0ea5e9"
 BTN_DANGER    = "#ef4444"
 BTN_SUCCESS   = "#22c55e"
 
-CAM_WIDTH     = 480
-CAM_HEIGHT    = 360
+CAM_WIDTH     = 720
+CAM_HEIGHT    = 540
 # Kamera juga di-set ke resolusi ini dari awal agar lebih ringan
 DETECT_EVERY  = 3   # Jalankan face detection hanya setiap N frame (hemat CPU)
 
@@ -74,26 +74,36 @@ class Face_Register:
     # ─────────────────────────────────────────────────────────────────────────
     def _build_window(self):
         self.win = tk.Tk()
-        self.win.title("Face Register — Lab Attendance")
+        self.win.title("Face Register")
         self.win.configure(bg=BG_COLOR)
-        self.win.geometry("820x580")
+        self.win.attributes("-fullscreen", True)
+        
+        # Center wrapper
+        self.wrapper = tk.Frame(self.win, bg=BG_COLOR)
+        self.wrapper.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        
+        # Force focus on macOS
+        self.win.lift()
+        self.win.attributes('-topmost', True)
+        self.win.after_idle(self.win.attributes, '-topmost', False)
+        self.win.focus_force()
 
         # ── Fonts ──────────────────────────────────────────────────────────
-        self.font_title   = tkFont.Font(family='Helvetica', size=18, weight='bold')
-        self.font_label   = tkFont.Font(family='Helvetica', size=11)
-        self.font_step    = tkFont.Font(family='Helvetica', size=12, weight='bold')
-        self.font_mono    = tkFont.Font(family='Courier',   size=11)
-        self.font_big_num = tkFont.Font(family='Helvetica', size=28, weight='bold')
+        self.font_title   = tkFont.Font(family='Helvetica', size=24, weight='bold')
+        self.font_label   = tkFont.Font(family='Helvetica', size=14)
+        self.font_step    = tkFont.Font(family='Helvetica', size=16, weight='bold')
+        self.font_mono    = tkFont.Font(family='Courier',   size=14)
+        self.font_big_num = tkFont.Font(family='Helvetica', size=36, weight='bold')
 
         # ── Header bar ─────────────────────────────────────────────────────
-        header = tk.Frame(self.win, bg=ACCENT_COLOR, height=50)
+        header = tk.Frame(self.wrapper, bg=ACCENT_COLOR, height=50)
         header.pack(fill=tk.X)
-        tk.Label(header, text="Face Register ACSL",
+        tk.Label(header, text="Face Register",
                  font=self.font_title, bg=ACCENT_COLOR, fg=WHITE_COLOR,
                  padx=20, pady=10).pack(side=tk.LEFT)
 
         # ── Main body ──────────────────────────────────────────────────────
-        body = tk.Frame(self.win, bg=BG_COLOR)
+        body = tk.Frame(self.wrapper, bg=BG_COLOR)
         body.pack(fill=tk.BOTH, expand=True, padx=16, pady=12)
 
         # Left: camera
@@ -123,8 +133,8 @@ class Face_Register:
         self.lbl_range_warn.pack(side=tk.LEFT)
 
         # Right: control panel
-        right = tk.Frame(body, bg=PANEL_COLOR, width=300, bd=0)
-        right.pack(side=tk.LEFT, fill=tk.Y, padx=(14, 0))
+        right = tk.Frame(body, bg=PANEL_COLOR, width=400, bd=0)
+        right.pack(side=tk.LEFT, fill=tk.Y, padx=(18, 0))
         right.pack_propagate(False)
 
         self._build_right_panel(right)
@@ -201,6 +211,12 @@ class Face_Register:
                                 wraplength=260, justify=tk.LEFT)
         self.lbl_log.pack(anchor=tk.W, padx=16)
 
+        # ── Bottom Action ──────────────────────────────────────────────────
+        btn_close = tk.Button(panel, text="⬅ Kembali ke Kiosk", command=self.win.destroy,
+                              font=self.font_step, bg=RED_COLOR, fg=WHITE_COLOR,
+                              cursor="hand2", padx=12, pady=10, relief=tk.FLAT)
+        btn_close.pack(fill=tk.X, side=tk.BOTTOM, padx=16, pady=20)
+        
     # ─────────────────────────────────────────────────────────────────────────
     # BUSINESS LOGIC
     # ─────────────────────────────────────────────────────────────────────────
