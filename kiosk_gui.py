@@ -32,7 +32,8 @@ class KioskGUI(tk.Tk):
         self.geometry("800x480")  # Ukuran umum LCD Raspberry Pi (7 inch)
         self.configure(bg="white")
         
-        self.is_fullscreen = False
+        self.is_fullscreen = True
+        self.attributes("-fullscreen", True)
         self.bind("<F11>", self.toggle_fullscreen)
         self.bind("<Escape>", self.end_fullscreen)
         
