@@ -35,7 +35,7 @@ class FaceRecognizerService:
         self._init_database()
 
     def _init_database(self):
-        conn = sqlite3.connect("attendance.db")
+        conn = sqlite3.connect("attendance.db", timeout=10)
         cursor = conn.cursor()
         create_table_sql = """CREATE TABLE IF NOT EXISTS attendance 
                               (name TEXT, time TEXT, date DATE, method TEXT, 
@@ -77,7 +77,7 @@ class FaceRecognizerService:
         current_time = datetime.now().strftime('%H:%M:%S')
         
         try:
-            conn = sqlite3.connect("attendance.db")
+            conn = sqlite3.connect("attendance.db", timeout=10)
             cursor = conn.cursor()
             cursor.execute("INSERT INTO attendance (name, time, date, method) VALUES (?, ?, ?, ?)", 
                            (name, current_time, current_date, method))
