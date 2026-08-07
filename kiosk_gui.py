@@ -11,7 +11,9 @@ from attendance_taker import FaceRecognizerService
 try:
     from tkmacosx import Button as MacButton
 except ImportError:
-    MacButton = tk.Button
+    def MacButton(*args, **kwargs):
+        kwargs.pop('borderless', None)
+        return tk.Button(*args, **kwargs)
 
 # Konstanta Nilai Mutu
 MUTU_RATES = {
