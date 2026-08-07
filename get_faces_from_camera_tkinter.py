@@ -98,9 +98,16 @@ class Face_Register:
         # ── Header bar ─────────────────────────────────────────────────────
         header = tk.Frame(self.wrapper, bg=ACCENT_COLOR, height=50)
         header.pack(fill=tk.X)
-        tk.Label(header, text="Face Register",
-                 font=self.font_title, bg=ACCENT_COLOR, fg=WHITE_COLOR,
-                 padx=20, pady=10).pack(side=tk.LEFT)
+        header.pack_propagate(False)
+
+        lbl_title = tk.Label(header, text="Face Register", font=self.font_title,
+                             bg=ACCENT_COLOR, fg=WHITE_COLOR)
+        lbl_title.pack(side=tk.LEFT, padx=20, pady=10)
+        
+        btn_close = tk.Button(header, text="Kembali ke Kiosk", font=self.font_label,
+                              bg=RED_COLOR, fg=WHITE_COLOR, cursor="hand2",
+                              command=self.win.destroy)
+        btn_close.pack(side=tk.RIGHT, padx=20, pady=10)
 
         # ── Main body ──────────────────────────────────────────────────────
         body = tk.Frame(self.wrapper, bg=BG_COLOR)
