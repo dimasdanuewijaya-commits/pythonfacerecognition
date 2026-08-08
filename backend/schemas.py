@@ -1,0 +1,112 @@
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+from datetime import date
+
+
+# ─── AUTH ─────────────────────────────────────────────────────────────────
+class UserCreate(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str = "asisten"
+    rfid_uid: Optional[str] = None
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    rfid_uid: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+# ─── ATTENDANCE (Kiosk -> Server) ─────────────────────────────────────────
+class ShiftInput(BaseModel):
+    """Data shift yang dikirim dari Kiosk saat Absen Pulang"""
+    shift_number: int           # 1-5
+    shift_label: str            # "Shift 1 (07:30 - 09:10)"
+    time_range: str             # "07:30 - 09:10"
+    activity: str = "Kosong"    # "Teaching", "Piket", "Stand By", "Rapat", "Riset", "Kosong"
+    points: int = 0
+
+class AttendanceCreate(BaseModel):
+    """Data yang dikirim Kiosk ke Server saat seseorang absen"""
+    user_name: str              # Nama dari Face Recognition / RFID
+    method: str = "face"        # "face" atau "rfid"
+    attendance_type: str        # "datang" atau "pulang"
+    shifts: Optional[List[ShiftInput]] = None  # Hanya diisi saat "pulang"
+
+
+# ─── ATTENDANCE (Server -> Flutter) ───────────────────────────────────────
+class ShiftResponse(BaseModel):
+    shift_number: int
+    shift_label: str
+    time_range: str
+    activity: str
+    points: int
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+class AttendanceResponse(BaseModel):
+    """Format data yang diterima oleh Flutter untuk ditampilkan di AttendanceScreen"""
+    id: int
+    date: str                           # "Tuesday, 13 Aug 2024"
+    check_in: Optional[str] = None      # "07:55 AM"
+    check_out: Optional[str] = None     # "10:05 AM"
+    method: str
+    verified: bool
+    shifts: List[ShiftResponse] = []
+
+    class Config:
+        from_attributes = True
+
+class AttendanceListResponse(BaseModel):
+    """Wrapper untuk daftar attendance"""
+    total: int
+    records: List[AttendanceResponse]
+
+
+# ─── SWAP REQUESTS ────────────────────────────────────────────────────────
+class SwapRequestCreate(BaseModel):
+    target_assistant_name: str
+    course: str
+    date: str
+    shift: str
+    reason: Optional[str] = None
+
+class SwapRequestResponse(BaseModel):
+    id: int
+    requester_name: str
+    target_assistant_name: str
+    course: str
+    date: str
+    shift: str
+    reason: Optional[str] = None
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+# ─── DASHBOARD STATS (Server -> Flutter HomeScreen) ──────────────────────
+class DashboardStats(BaseModel):
+    """Data statistik untuk HomeScreen Flutter"""
+    total_hadir: int
+    total_izin: int
+    total_alpha: int
+    poin_mutu: int
+    gaji_bulan_ini: int
+    recent_attendance: List[AttendanceResponse] = []
