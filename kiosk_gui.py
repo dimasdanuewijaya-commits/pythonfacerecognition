@@ -284,14 +284,14 @@ class FaceIDScreen(tk.Frame):
         self.stop_camera()
         self.controller.current_user = name
         
-        # Log to DB
-        success, msg = self.controller.recognizer.record_attendance(name, method="face_id")
-        if not success:
-            print(f"DB Log Failed: {msg}")
-            
         if self.controller.attendance_type == "datang":
+            # API Hit Datang
+            success, msg = self.controller.recognizer.record_attendance(name, method="face", attendance_type="datang")
+            if not success:
+                print(f"API Error: {msg}")
             self.controller.show_frame("SuccessScreen")
         else:
+            # Tunda API Hit, masuk ke layar Shift
             self.controller.show_frame("ShiftMutuScreen")
 
 class RFIDScreen(tk.Frame):
@@ -333,8 +333,13 @@ class RFIDScreen(tk.Frame):
         self.rfid_entry.insert(0, uid)
         self.controller.current_user = name
         if self.controller.attendance_type == "datang":
+            # API Hit Datang
+            success, msg = self.controller.recognizer.record_attendance(name, method="rfid", attendance_type="datang")
+            if not success:
+                print(f"API Error: {msg}")
             self.controller.show_frame("SuccessScreen")
         else:
+            # Tunda API Hit, masuk ke layar Shift
             self.controller.show_frame("ShiftMutuScreen")
             
     def go_back(self):
@@ -427,6 +432,36 @@ class ShiftMutuScreen(tk.Frame):
             
         total_mutu_value = sum(MUTU_RATES[m] for m in selected_mutus)
         self.controller.total_rp = int(total_mutu_value * RUPIAH_PER_MUTU)
+        
+        # Susun payload shifts untuk API Backend
+        shifts_payload = []
+        shifts_names = ["Shift 1 (07:30 - 09:10)", "Shift 2 (09:20 - 11:00)", "Shift 3 (11:10 - 12:50)", "Shift 4 (13:00 - 14:40)", "Shift 5 (14:50 - 16:30)"]
+        time_ranges = ["07:30 - 09:10", "09:20 - 11:00", "11:10 - 12:50", "13:00 - 14:40", "14:50 - 16:30"]
+        
+        for r in range(5):
+            mutu = self.selected_mutu_per_shift[r]
+            activity = mutu.title() if mutu else "Kosong"
+            points = MUTU_RATES.get(mutu, 0) if mutu else 0
+            
+            shifts_payload.append({
+                "shift_number": r + 1,
+                "shift_label": shifts_names[r],
+                "time_range": time_ranges[r],
+                "activity": activity,
+                "points": points
+            })
+            
+        # Tembak API Absen Pulang
+        success, msg = self.controller.recognizer.record_attendance(
+            self.controller.current_user, 
+            method="face", # default fallback
+            attendance_type="pulang", 
+            shifts=shifts_payload
+        )
+        
+        if not success:
+            print(f"API Error: {msg}")
+            
         self.controller.show_frame("SuccessScreen")
         
     def on_show(self):

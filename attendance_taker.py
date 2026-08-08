@@ -4,7 +4,7 @@ import cv2
 import pandas as pd
 import os
 import logging
-import sqlite3
+import requests
 from datetime import datetime
 
 class FaceRecognizerService:
@@ -30,19 +30,6 @@ class FaceRecognizerService:
         self.face_name_known_list = []
         self.face_features_known_list = []
         self._load_face_database()
-        
-        # Ensure SQLite DB is ready
-        self._init_database()
-
-    def _init_database(self):
-        conn = sqlite3.connect("attendance.db", timeout=10)
-        cursor = conn.cursor()
-        create_table_sql = """CREATE TABLE IF NOT EXISTS attendance 
-                              (name TEXT, time TEXT, date DATE, method TEXT, 
-                               UNIQUE(name, date))"""
-        cursor.execute(create_table_sql)
-        conn.commit()
-        conn.close()
 
     def _load_face_database(self):
         path_csv = "data/features_all.csv"
@@ -71,23 +58,31 @@ class FaceRecognizerService:
         feature_2 = np.array(feature_2)
         return np.sqrt(np.sum(np.square(feature_1 - feature_2)))
 
-    def record_attendance(self, name, method="face_id"):
-        # We wrap this in try-except so it doesn't crash the GUI if constraint fails
-        current_date = datetime.now().strftime('%Y-%m-%d')
-        current_time = datetime.now().strftime('%H:%M:%S')
-        
+    def record_attendance(self, name, method="face", attendance_type="datang", shifts=None):
+        """
+        Mengirim data absen ke Server FastAPI
+        """
+        url = "http://localhost:8000/attendance/"
+        payload = {
+            "user_name": name,
+            "method": method,
+            "attendance_type": attendance_type
+        }
+        if shifts:
+            payload["shifts"] = shifts
+            
         try:
-            conn = sqlite3.connect("attendance.db", timeout=10)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO attendance (name, time, date, method) VALUES (?, ?, ?, ?)", 
-                           (name, current_time, current_date, method))
-            conn.commit()
-            conn.close()
-            return True, "Recorded successfully"
-        except sqlite3.IntegrityError:
-            return False, "Already recorded today"
-        except Exception as e:
-            return False, str(e)
+            response = requests.post(url, json=payload, timeout=5)
+            data = response.json()
+            
+            if response.status_code == 200:
+                if data.get("status") == "warning":
+                    return False, data.get("message")
+                return True, data.get("message")
+            else:
+                return False, data.get("detail", "Unknown API error")
+        except requests.exceptions.RequestException as e:
+            return False, f"Server Error/Mati: {e}"
 
     def process_frame(self, frame_rgb):
         """
