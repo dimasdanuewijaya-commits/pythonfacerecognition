@@ -15,8 +15,23 @@ class User(Base):
     role = Column(String, default="asisten")  # "asisten" atau "admin"
     rfid_uid = Column(String, unique=True, nullable=True)  # UID kartu RFID (opsional)
     
-    # Relasi ke tabel attendance
+    # Relasi ke tabel attendance dan schedule
     attendances = relationship("Attendance", back_populates="user")
+    schedules = relationship("Schedule", back_populates="user", cascade="all, delete-orphan")
+
+
+class Schedule(Base):
+    """Tabel Jadwal Mingguan Asisten"""
+    __tablename__ = "schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    day_of_week = Column(String, nullable=False) # "Monday", "Tuesday", etc.
+    shift_number = Column(Integer, nullable=False) # 1-5
+    activity = Column(String, nullable=False) # "Teaching", "Piket", "Stand By", etc.
+
+    # Relasi
+    user = relationship("User", back_populates="schedules")
 
 
 class Attendance(Base):
@@ -47,7 +62,7 @@ class AttendanceShift(Base):
     shift_label = Column(String, nullable=False)              # "Shift 1 (07:30 - 09:10)"
     time_range = Column(String, nullable=False)               # "07:30 - 09:10"
     activity = Column(String, default="Kosong")               # "Teaching", "Piket", "Stand By", "Rapat", "Riset", "Kosong"
-    points = Column(Integer, default=0)                       # Poin mutu
+    points = Column(Float, default=0.0)                       # Poin mutu
     is_active = Column(Boolean, default=False)                # Apakah shift ini diambil?
 
     # Relasi

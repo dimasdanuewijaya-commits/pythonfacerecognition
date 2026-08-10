@@ -78,7 +78,7 @@ class FaceRecognizerService:
             if response.status_code == 200:
                 if data.get("status") == "warning":
                     return False, data.get("message")
-                return True, data.get("message")
+                return True, data
             else:
                 return False, data.get("detail", "Unknown API error")
         except requests.exceptions.RequestException as e:

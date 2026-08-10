@@ -31,6 +31,24 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
+# ─── SCHEDULE ───────────────────────────────────────────────────────────────
+class ScheduleCreate(BaseModel):
+    user_id: int
+    day_of_week: str
+    shift_number: int
+    activity: str
+
+class ScheduleResponse(BaseModel):
+    id: int
+    user_id: int
+    day_of_week: str
+    shift_number: int
+    activity: str
+
+    class Config:
+        from_attributes = True
+
+
 # ─── ATTENDANCE (Kiosk -> Server) ─────────────────────────────────────────
 class ShiftInput(BaseModel):
     """Data shift yang dikirim dari Kiosk saat Absen Pulang"""
@@ -38,7 +56,7 @@ class ShiftInput(BaseModel):
     shift_label: str            # "Shift 1 (07:30 - 09:10)"
     time_range: str             # "07:30 - 09:10"
     activity: str = "Kosong"    # "Teaching", "Piket", "Stand By", "Rapat", "Riset", "Kosong"
-    points: int = 0
+    points: float = 0.0
 
 class AttendanceCreate(BaseModel):
     """Data yang dikirim Kiosk ke Server saat seseorang absen"""
@@ -54,7 +72,7 @@ class ShiftResponse(BaseModel):
     shift_label: str
     time_range: str
     activity: str
-    points: int
+    points: float
     is_active: bool
 
     class Config:

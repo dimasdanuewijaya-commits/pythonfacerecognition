@@ -48,16 +48,16 @@ def seed_initial_data():
         role="admin"
     )
     
-    # Buat Asisten default (sesuai dengan nama di Flutter & Kiosk)
-    dimas = models.User(
-        name="Dimas Danue Wijaya",
-        email="dimas@lab.com",
+    # Buat Asisten default (Dataset person 5)
+    dimass = models.User(
+        name="dimass",
+        email="dimass@lab.com",
         password_hash=auth.get_password_hash("dimas123"),
         role="asisten",
-        rfid_uid="887577706921"  # UID kartu RFID yang terbaca di Raspberry Pi
+        rfid_uid="111111111"
     )
     
-    db.add_all([admin, dimas])
+    db.add_all([admin, dimass])
     db.commit()
     print("[SEED] Akun Admin dan Asisten berhasil dibuat!")
     db.close()
@@ -134,9 +134,14 @@ def create_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail=f"User '{data.user_name}' tidak ditemukan di database")
     
     today = date.today()
-    now = datetime.now().strftime("%I:%M %p")  # Format "07:55 AM"
+    current_dt = datetime.now()
+    now = current_dt.strftime("%I:%M %p")  # Format "07:55 AM"
     
     if data.attendance_type == "datang":
+        # Blokir absen datang jika sudah lewat jam 18:00
+        if current_dt.hour >= 18:
+            raise HTTPException(status_code=400, detail="Lab sudah tutup. Batas absen datang adalah jam 18:00.")
+
         # Cek apakah sudah absen hari ini
         existing = db.query(models.Attendance).filter(
             models.Attendance.user_id == user.id,
@@ -169,9 +174,71 @@ def create_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_
         
         attendance.check_out = now
         
-        # Simpan data shift jika ada
+        # Hapus data shift lama jika ada (mencegah dobel kalau absen pulang berkali-kali)
+        db.query(models.AttendanceShift).filter(models.AttendanceShift.attendance_id == attendance.id).delete()
+        
+        # Parsing jam check-in dan check-out untuk validasi shift (Anti-Cheat)
+        check_in_time = datetime.strptime(attendance.check_in, "%I:%M %p").time()
+        check_out_time = datetime.strptime(now, "%I:%M %p").time()
+
+        # Hitung aktual total poin dan gaji berdasarkan shift yang benar-benar tersimpan dan sah
+        total_points = 0
+        # Ambil hari ini
+        today_dow = date.today().strftime('%A')
+
+        # Simpan data shift baru
         if data.shifts:
             for s in data.shifts:
+                # Validasi jam shift
+                try:
+                    start_str, end_str = s.time_range.split(" - ")
+                    shift_start = datetime.strptime(start_str.strip(), "%H:%M").time()
+                    shift_end = datetime.strptime(end_str.strip(), "%H:%M").time()
+                    
+                    if not (check_in_time < shift_end and check_out_time > shift_start):
+                        s.activity = f"{s.activity} (Di Luar Jam)"
+                        s.points = 0
+                    elif s.activity.lower() == "kosong":
+                        s.activity = "Stand By (Otomatis)"
+                        s.points = 1
+                except Exception as e:
+                    print(f"Error parsing time_range '{s.time_range}': {e}")
+                
+                # Validasi Jadwal & Swap jika lolos jam dan bukan Kosong
+                if s.points > 0 and s.activity.lower() not in ["kosong", "stand by"]:
+                    my_sched = db.query(models.Schedule).filter(
+                        models.Schedule.user_id == user.id,
+                        models.Schedule.day_of_week == today_dow,
+                        models.Schedule.shift_number == s.shift_number
+                    ).first()
+                    
+                    if my_sched:
+                        if my_sched.activity.lower() != s.activity.lower():
+                            s.activity = f"{s.activity} (Batal: Jadwal aslinya {my_sched.activity})"
+                            s.points = 0
+                    else:
+                        # Cek apakah dia Swap menggantikan orang lain
+                        swap = db.query(models.SwapRequest).filter(
+                            models.SwapRequest.target_assistant_name == user.name,
+                            models.SwapRequest.status == "approved",
+                            models.SwapRequest.shift.like(f"%SHIFT {s.shift_number}%")
+                        ).first()
+                        
+                        if swap:
+                            orig_sched = db.query(models.Schedule).filter(
+                                models.Schedule.user_id == swap.requester_id,
+                                models.Schedule.day_of_week == today_dow,
+                                models.Schedule.shift_number == s.shift_number
+                            ).first()
+                            
+                            expected = orig_sched.activity if orig_sched else "Stand By"
+                            if s.activity.lower() != expected.lower():
+                                s.activity = f"{s.activity} (Batal: Jadwal Swap aslinya {expected})"
+                                s.points = 0
+                        else:
+                            s.activity = f"{s.activity} (Batal: Tidak ada jadwal)"
+                            s.points = 0
+
                 shift = models.AttendanceShift(
                     attendance_id=attendance.id,
                     shift_number=s.shift_number,
@@ -182,12 +249,42 @@ def create_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_
                     is_active=s.points > 0
                 )
                 db.add(shift)
+                total_points += s.points
         
         db.commit()
-        return {"status": "success", "message": f"Absen PULANG berhasil untuk {user.name}", "check_out": now}
+        total_rp = int(total_points * 7500)
+        return {
+            "status": "success", 
+            "message": f"Absen PULANG berhasil untuk {user.name}", 
+            "check_out": now,
+            "total_points": total_points,
+            "total_rp": total_rp
+        }
     
     else:
         raise HTTPException(status_code=400, detail="attendance_type harus 'datang' atau 'pulang'")
+
+
+# ─── SCHEDULE ENDPOINTS ───────────────────────────────────────────────────
+@app.post("/schedules/", response_model=schemas.ScheduleResponse)
+def create_schedule(sched: schemas.ScheduleCreate, db: Session = Depends(get_db)):
+    """Membuat jadwal mingguan baru untuk asisten"""
+    new_sched = models.Schedule(
+        user_id=sched.user_id,
+        day_of_week=sched.day_of_week,
+        shift_number=sched.shift_number,
+        activity=sched.activity
+    )
+    db.add(new_sched)
+    db.commit()
+    db.refresh(new_sched)
+    return new_sched
+
+@app.get("/schedules/{user_id}", response_model=List[schemas.ScheduleResponse])
+def get_schedules(user_id: int, db: Session = Depends(get_db)):
+    """Melihat jadwal asisten tertentu"""
+    schedules = db.query(models.Schedule).filter(models.Schedule.user_id == user_id).all()
+    return schedules
 
 
 # ─── ATTENDANCE ENDPOINTS (Server -> Flutter) ─────────────────────────────
@@ -252,7 +349,12 @@ def get_dashboard(user_id: int, db: Session = Depends(get_db)):
         models.Attendance.date <= today
     ).all()
     
-    total_hadir = len(monthly_records)
+    total_hadir = db.query(models.Attendance).filter(
+        models.Attendance.user_id == user_id,
+        models.Attendance.date >= first_day,
+        models.Attendance.date <= today,
+        models.Attendance.check_out != None
+    ).count()
     
     # Hitung total poin mutu bulan ini
     total_poin = 0

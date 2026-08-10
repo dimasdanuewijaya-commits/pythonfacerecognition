@@ -431,12 +431,18 @@ class ShiftMutuScreen(tk.Frame):
             return
             
         total_mutu_value = sum(MUTU_RATES[m] for m in selected_mutus)
-        self.controller.total_rp = int(total_mutu_value * RUPIAH_PER_MUTU)
+        # Jangan hitung RP di sini, tunggu balasan dari Backend (Anti-Cheat)
+        self.controller.total_rp = 0
         
         # Susun payload shifts untuk API Backend
         shifts_payload = []
-        shifts_names = ["Shift 1 (07:30 - 09:10)", "Shift 2 (09:20 - 11:00)", "Shift 3 (11:10 - 12:50)", "Shift 4 (13:00 - 14:40)", "Shift 5 (14:50 - 16:30)"]
-        time_ranges = ["07:30 - 09:10", "09:20 - 11:00", "11:10 - 12:50", "13:00 - 14:40", "14:50 - 16:30"]
+        shifts_data = [
+            {"label": "Shift 1", "time": "08:00 - 10:00"},
+            {"label": "Shift 2", "time": "10:00 - 12:00"},
+            {"label": "Shift 3", "time": "12:00 - 14:00"},
+            {"label": "Shift 4", "time": "14:00 - 16:00"},
+            {"label": "Shift 5", "time": "16:00 - 18:00"}
+        ]
         
         for r in range(5):
             mutu = self.selected_mutu_per_shift[r]
@@ -445,22 +451,25 @@ class ShiftMutuScreen(tk.Frame):
             
             shifts_payload.append({
                 "shift_number": r + 1,
-                "shift_label": shifts_names[r],
-                "time_range": time_ranges[r],
+                "shift_label": f"{shifts_data[r]['label']} ({shifts_data[r]['time']})",
+                "time_range": shifts_data[r]['time'],
                 "activity": activity,
                 "points": points
             })
             
         # Tembak API Absen Pulang
-        success, msg = self.controller.recognizer.record_attendance(
+        success, response_data = self.controller.recognizer.record_attendance(
             self.controller.current_user, 
             method="face", # default fallback
             attendance_type="pulang", 
             shifts=shifts_payload
         )
         
-        if not success:
-            print(f"API Error: {msg}")
+        if success:
+            if isinstance(response_data, dict):
+                self.controller.total_rp = response_data.get("total_rp", 0)
+        else:
+            print(f"API Error: {response_data}")
             
         self.controller.show_frame("SuccessScreen")
         
@@ -500,7 +509,7 @@ class SuccessScreen(tk.Frame):
             msg = f"You did so well today.\nGet home safe, okay?"
             self.msg_label.config(text=msg)
             
-            mutu_msg = f"Total Mutu Hari Ini\nRp {rp:,}"
+            mutu_msg = f"Estimasi Total Mutu\nRp {rp:,}"
             self.mutu_label.config(text=mutu_msg)
             self.mutu_frame.pack(pady=30)
             
