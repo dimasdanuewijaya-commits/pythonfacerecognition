@@ -70,15 +70,26 @@ class AttendanceShift(Base):
 
 
 class SwapRequest(Base):
-    """Permintaan Tukar Shift - cocok dengan NewSwapRequestScreen Flutter"""
+    """Permintaan Tukar Shift (Tukar Guling)"""
     __tablename__ = "swap_requests"
 
     id = Column(Integer, primary_key=True, index=True)
     requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    target_assistant_name = Column(String, nullable=False)
-    course = Column(String, nullable=False)        # "JKL - 2DC02-B"
-    date = Column(String, nullable=False)           # "Oct 24, 2023"
-    shift = Column(String, nullable=False)          # "SHIFT 1 08:00 AM - 10:00 AM"
+    target_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    requester_schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
+    target_schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
+    swap_date = Column(String, nullable=False)  # "2023-10-24" atau "Oct 24, 2023"
     reason = Column(String, nullable=True)
     status = Column(String, default="pending")      # "pending", "approved", "rejected"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Announcement(Base):
+    """Pengumuman dari Admin ke Asisten"""
+    __tablename__ = "announcements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    content = Column(String)
+    tag = Column(String)
+    image_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

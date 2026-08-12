@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 
 
 # ─── AUTH ─────────────────────────────────────────────────────────────────
@@ -24,6 +24,14 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TokenData(BaseModel):
+    user_id: Optional[str] = None
+    role: Optional[str] = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -99,25 +107,48 @@ class AttendanceListResponse(BaseModel):
 
 # ─── SWAP REQUESTS ────────────────────────────────────────────────────────
 class SwapRequestCreate(BaseModel):
-    target_assistant_name: str
-    course: str
-    date: str
-    shift: str
+    target_user_id: int
+    requester_schedule_id: int
+    target_schedule_id: int
+    swap_date: str
     reason: Optional[str] = None
 
 class SwapRequestResponse(BaseModel):
     id: int
-    requester_name: str
-    target_assistant_name: str
-    course: str
-    date: str
-    shift: str
+    requester_id: int
+    target_user_id: int
+    requester_schedule_id: int
+    target_schedule_id: int
+    swap_date: str
     reason: Optional[str] = None
     status: str
+    
+    # Enriched data for UI
+    requester_name: Optional[str] = None
+    target_name: Optional[str] = None
+    requester_schedule_detail: Optional[str] = None # e.g. "Shift 1 - JKL"
+    target_schedule_detail: Optional[str] = None
 
     class Config:
         from_attributes = True
 
+
+# ─── ANNOUNCEMENTS ────────────────────────────────────────────────────────
+class AnnouncementCreate(BaseModel):
+    title: str
+    content: str
+    tag: str = "INFO"
+
+class AnnouncementResponse(BaseModel):
+    id: int
+    title: str
+    content: str
+    tag: str
+    image_url: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 # ─── DASHBOARD STATS (Server -> Flutter HomeScreen) ──────────────────────
 class DashboardStats(BaseModel):
@@ -125,6 +156,8 @@ class DashboardStats(BaseModel):
     total_hadir: int
     total_izin: int
     total_alpha: int
-    poin_mutu: int
-    gaji_bulan_ini: int
+    poin_mutu: float
+    total_hours_str: str = "0h 0m"
+    gaji_bulan_ini: float
     recent_attendance: List[AttendanceResponse] = []
+    latest_announcement: Optional[AnnouncementResponse] = None

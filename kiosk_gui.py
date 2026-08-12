@@ -379,27 +379,28 @@ class ShiftMutuScreen(tk.Frame):
         mutu_keys = ["stand by", "piket", "teaching", "rapat", "riset"]
         
         for r, shift in enumerate(shifts):
-            tk.Label(grid_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=20, pady=5, sticky=tk.E)
+            tk.Label(grid_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=8, pady=5, sticky=tk.E)
             
             row_buttons = []
             for c, mutu in enumerate(mutu_keys):
                 btn = MacButton(grid_frame, text=str(c+1), font=self.controller.large_button_font, 
-                                bg="white", fg="#007bff", borderless=1, padx=40, pady=5,
+                                bg="white", fg="#007bff", borderless=1, padx=20, pady=10,
                                 command=lambda s=shift, m=mutu, r=r, c=c: self.select_cell(s, m, r, c))
-                btn.grid(row=r, column=c+1, padx=15, pady=5)
+                btn.grid(row=r, column=c+1, padx=8, pady=5)
                 row_buttons.append(btn)
             self.buttons.append(row_buttons)
             
-        self.confirm_btn = MacButton(self.center_frame, text="CONFIRM", font=self.controller.large_button_font, 
-                                     bg="#cccccc", fg="black", borderless=1, padx=80, pady=15,
-                                     command=self.submit)
-        self.confirm_btn.pack(pady=10)
+        btn_frame = tk.Frame(self.center_frame, bg="white")
+        btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(20, 0), padx=15)
         
-        btn_frame = tk.Frame(self, bg="white")
-        btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=15, padx=20)
         MacButton(btn_frame, text="< Batal", font=self.controller.normal_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=30, pady=15,
                   command=lambda: self.controller.show_frame("MainScreen")).pack(side=tk.LEFT)
+                  
+        self.confirm_btn = MacButton(btn_frame, text="CONFIRM", font=self.controller.large_button_font, 
+                                     bg="#cccccc", fg="black", borderless=1, padx=50, pady=15,
+                                     command=self.submit)
+        self.confirm_btn.pack(side=tk.RIGHT)
                   
     def select_cell(self, shift, mutu, r, c):
         # Toggle logic: if clicking the already selected mutu, unselect it
