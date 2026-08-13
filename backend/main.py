@@ -122,6 +122,23 @@ def get_all_users(db: Session = Depends(get_db)):
     """Mendapatkan daftar semua user (untuk Admin Dashboard)"""
     return db.query(models.User).all()
 
+@app.put("/users/{user_id}/rfid", response_model=schemas.UserResponse)
+def update_user_rfid(user_id: int, rfid_data: schemas.UserRfidUpdate, db: Session = Depends(get_db)):
+    """Mendaftarkan atau mengupdate RFID untuk user tertentu"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+    
+    # Cek apakah RFID sudah dipakai oleh orang lain
+    existing = db.query(models.User).filter(models.User.rfid_uid == rfid_data.rfid_uid).first()
+    if existing and existing.id != user_id:
+        raise HTTPException(status_code=400, detail=f"RFID ini sudah digunakan oleh {existing.name}")
+        
+    user.rfid_uid = rfid_data.rfid_uid
+    db.commit()
+    db.refresh(user)
+    return user
+
 
 # ─── ATTENDANCE ENDPOINTS (Kiosk -> Server) ────────────────────────────────
 @app.post("/attendance/", response_model=dict)

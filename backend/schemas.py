@@ -22,6 +22,9 @@ class UserResponse(BaseModel):
     role: str
     rfid_uid: Optional[str] = None
 
+class UserRfidUpdate(BaseModel):
+    rfid_uid: str
+
     class Config:
         from_attributes = True
 
