@@ -322,7 +322,7 @@ class RFIDScreen(tk.Frame):
         tk.Label(self.center_frame, text="Tempel Kartu Asisten Anda", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=50)
         
         # Simulating RFID tap for testing on laptop
-        self.rfid_entry = tk.Entry(self.center_frame, font=self.controller.normal_font)
+        self.rfid_entry = tk.Label(self.center_frame, font=self.controller.normal_font, bg="white", fg="black")
         self.rfid_entry.pack(pady=20)
         
 
@@ -336,8 +336,7 @@ class RFIDScreen(tk.Frame):
                   command=self.go_back).pack(side=tk.LEFT)
 
     def on_show(self):
-        self.rfid_entry.delete(0, tk.END)
-        self.rfid_entry.focus()
+        self.rfid_entry.config(text="")
         self.controller.rfid.start_scanning(self._on_rfid_success)
         
     def _on_rfid_success(self, uid, name):
@@ -346,8 +345,7 @@ class RFIDScreen(tk.Frame):
         
     def _handle_rfid_success(self, uid, name):
         self.controller.led.success(3.0)
-        self.rfid_entry.delete(0, tk.END)
-        self.rfid_entry.insert(0, uid)
+        self.rfid_entry.config(text=uid)
         self.controller.current_user = name
         if self.controller.attendance_type == "datang":
             success, msg = self.controller.recognizer.record_attendance(name, method="rfid", attendance_type="datang")
@@ -358,7 +356,7 @@ class RFIDScreen(tk.Frame):
                 self.controller.show_frame("SuccessScreen")
             else:
                 messagebox.showerror("RFID Ditolak", msg)
-                self.rfid_entry.delete(0, tk.END)
+                self.rfid_entry.config(text="")
                 # Lanjutkan scan jika ditolak
                 self.controller.rfid.start_scanning(self._on_rfid_success)
         else:
