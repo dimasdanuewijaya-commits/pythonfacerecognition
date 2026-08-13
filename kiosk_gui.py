@@ -204,8 +204,9 @@ class FaceIDScreen(tk.Frame):
         
     def _start_camera(self):
         if self.cap is None:
-            # Menggunakan index 0 (bawaan) tapi memaksa set resolusi dan codec MJPG
-            self.cap = cv2.VideoCapture(0)
+            # Menggabungkan kedua solusi: Paksa ke /dev/video0 dengan backend V4L2, 
+            # lalu set format MJPG agar Linux bisa menelan videonya.
+            self.cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
             self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
