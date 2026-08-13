@@ -204,8 +204,8 @@ class FaceIDScreen(tk.Frame):
         
     def _start_camera(self):
         if self.cap is None:
-            # Menggunakan backend V4L2 secara eksplisit (Sangat direkomendasikan untuk RPi 5 + USB Webcam)
-            self.cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+            # Memaksa membaca persis dari /dev/video0 agar tidak nyasar ke /dev/video30 (Encoder Hardware RPi 5)
+            self.cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
             
             if not self.cap.isOpened():
                 self.status_label.config(text="Kamera Tidak Terdeteksi! (Colokkan Kamera)", fg="red")
