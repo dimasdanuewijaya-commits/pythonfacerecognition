@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
@@ -365,6 +365,7 @@ def get_attendance_history(
         
         result.append(schemas.AttendanceResponse(
             id=record.id,
+            user_id=record.user_id,
             date=formatted_date,
             check_in=record.check_in,
             check_out=record.check_out,
@@ -444,11 +445,77 @@ def get_dashboard(user_id: int, db: Session = Depends(get_db)):
             check_out=r.check_out, method=r.method,
             verified=r.verified, shifts=shifts_data
         ))
-    # Hitung total izin (Permit) = Jumlah swap request APPROVED
-    total_izin = db.query(models.SwapRequest).filter(
-        models.SwapRequest.requester_id == user_id,
-        models.SwapRequest.status == "approved"
-    ).count()
+    # Hitung Rank (Total jam terbanyak dari semua asisten bulan ini)
+    all_users = db.query(models.User).all()
+    user_durations = []
+    
+    for u in all_users:
+        u_records = db.query(models.Attendance).filter(
+            models.Attendance.user_id == u.id,
+            models.Attendance.date >= first_day,
+            models.Attendance.date <= today
+        ).all()
+        
+        u_seconds = 0
+        for r in u_records:
+            if r.check_in and r.check_out:
+                try:
+                    cin = datetime.strptime(r.check_in, "%I:%M %p")
+                    cout = datetime.strptime(r.check_out, "%I:%M %p")
+                    diff = cout - cin
+                    u_seconds += diff.total_seconds()
+                except Exception:
+                    pass
+        
+        user_durations.append({"user_id": u.id, "seconds": u_seconds})
+        
+    # Urutkan berdasarkan seconds (descending)
+    user_durations.sort(key=lambda x: x["seconds"], reverse=True)
+    
+    # Cari rank user ini
+    rank = 1
+    for idx, stat in enumerate(user_durations):
+        if stat["user_id"] == user_id:
+            rank = idx + 1
+            break
+
+    # Hitung Total Alpha (Hanya untuk Teaching dan Piket)
+    user_schedules = db.query(models.Schedule).filter(models.Schedule.user_id == user_id).all()
+    
+    # Kumpulkan hari di mana ada jadwal Teaching atau Piket
+    scheduled_days = set()
+    for s in user_schedules:
+        act = s.activity.lower()
+        if act.startswith("teaching") or act == "piket":
+            scheduled_days.add(s.day_of_week.lower())
+    
+    eng_to_indo_day = {
+        0: 'senin', 1: 'selasa', 2: 'rabu', 3: 'kamis',
+        4: 'jumat', 5: 'sabtu', 6: 'minggu'
+    }
+    
+    total_alpha = 0
+    yesterday = today - timedelta(days=1)
+    
+    # Jangan hitung alpha sebelum akun dibuat
+    start_date = first_day
+    if user.created_at:
+        user_created_date = user.created_at.date()
+        if user_created_date > start_date:
+            start_date = user_created_date
+    
+    current_date = start_date
+    while current_date <= yesterday:
+        day_name = eng_to_indo_day[current_date.weekday()]
+        
+        # Jika asisten punya jadwal Teaching/Piket di hari itu
+        if day_name in scheduled_days:
+            # Cek apakah dia absen pulang di hari tersebut
+            has_attendance = any(r.date == current_date and r.check_out is not None for r in monthly_records)
+            if not has_attendance:
+                total_alpha += 1
+                    
+        current_date += timedelta(days=1)
 
     # Fetch latest announcement
     latest_announcement = db.query(models.Announcement).order_by(models.Announcement.created_at.desc()).first()
@@ -458,8 +525,8 @@ def get_dashboard(user_id: int, db: Session = Depends(get_db)):
 
     return schemas.DashboardStats(
         total_hadir=total_hadir,
-        total_izin=total_izin,
-        total_alpha=0,
+        rank=rank,
+        total_alpha=total_alpha,
         poin_mutu=total_poin,
         total_hours_str=total_hours_str,
         gaji_bulan_ini=gaji,
@@ -506,108 +573,6 @@ def get_announcements(db: Session = Depends(get_db)):
     return db.query(models.Announcement).order_by(models.Announcement.created_at.desc()).all()
 
 
-# ─── SWAP REQUESTS ────────────────────────────────────────────────────────
-@app.post("/swap-requests/", response_model=schemas.SwapRequestResponse)
-def create_swap_request(data: schemas.SwapRequestCreate, user_id: int, db: Session = Depends(get_db)):
-    """Membuat permintaan tukar shift baru (Tukar Guling)"""
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User tidak ditemukan")
-    
-    target_user = db.query(models.User).filter(models.User.id == data.target_user_id).first()
-    if not target_user:
-        raise HTTPException(status_code=404, detail="Target User tidak ditemukan")
-
-    swap = models.SwapRequest(
-        requester_id=user_id,
-        target_user_id=data.target_user_id,
-        requester_schedule_id=data.requester_schedule_id,
-        target_schedule_id=data.target_schedule_id,
-        swap_date=data.swap_date,
-        reason=data.reason
-    )
-    db.add(swap)
-    db.commit()
-    db.refresh(swap)
-    
-    req_sched = db.query(models.Schedule).filter(models.Schedule.id == swap.requester_schedule_id).first()
-    target_sched = db.query(models.Schedule).filter(models.Schedule.id == swap.target_schedule_id).first()
-    
-    req_detail = f"Shift {req_sched.shift_number} - {req_sched.activity}" if req_sched else "Unknown"
-    tgt_detail = f"Shift {target_sched.shift_number} - {target_sched.activity}" if target_sched else "Unknown"
-    
-    return schemas.SwapRequestResponse(
-        id=swap.id,
-        requester_id=swap.requester_id,
-        target_user_id=swap.target_user_id,
-        requester_schedule_id=swap.requester_schedule_id,
-        target_schedule_id=swap.target_schedule_id,
-        swap_date=swap.swap_date,
-        reason=swap.reason,
-        status=swap.status,
-        requester_name=user.name,
-        target_name=target_user.name,
-        requester_schedule_detail=req_detail,
-        target_schedule_detail=tgt_detail
-    )
-
-
-@app.get("/swap-requests/", response_model=List[schemas.SwapRequestResponse])
-def get_swap_requests(user_id: Optional[int] = None, type: str = "all", db: Session = Depends(get_db)):
-    """
-    type: 'incoming' (user as target), 'outgoing' (user as requester), 'all'
-    """
-    query = db.query(models.SwapRequest)
-    if user_id:
-        if type == "incoming":
-            query = query.filter(models.SwapRequest.target_user_id == user_id)
-        elif type == "outgoing":
-            query = query.filter(models.SwapRequest.requester_id == user_id)
-        else:
-            query = query.filter((models.SwapRequest.requester_id == user_id) | (models.SwapRequest.target_user_id == user_id))
-    
-    swaps = query.order_by(models.SwapRequest.created_at.desc()).all()
-    
-    result = []
-    for s in swaps:
-        req_user = db.query(models.User).filter(models.User.id == s.requester_id).first()
-        tgt_user = db.query(models.User).filter(models.User.id == s.target_user_id).first()
-        req_sched = db.query(models.Schedule).filter(models.Schedule.id == s.requester_schedule_id).first()
-        tgt_sched = db.query(models.Schedule).filter(models.Schedule.id == s.target_schedule_id).first()
-        
-        result.append(schemas.SwapRequestResponse(
-            id=s.id,
-            requester_id=s.requester_id,
-            target_user_id=s.target_user_id,
-            requester_schedule_id=s.requester_schedule_id,
-            target_schedule_id=s.target_schedule_id,
-            swap_date=s.swap_date,
-            reason=s.reason,
-            status=s.status,
-            requester_name=req_user.name if req_user else "Unknown",
-            target_name=tgt_user.name if tgt_user else "Unknown",
-            requester_schedule_detail=f"Shift {req_sched.shift_number} - {req_sched.activity}" if req_sched else "Unknown",
-            target_schedule_detail=f"Shift {tgt_sched.shift_number} - {tgt_sched.activity}" if tgt_sched else "Unknown"
-        ))
-    
-    return result
-
-class SwapRespond(BaseModel):
-    status: str
-
-@app.put("/swap-requests/{swap_id}/respond")
-def respond_swap_request(swap_id: int, data: SwapRespond, db: Session = Depends(get_db)):
-    """Asisten B menerima atau menolak permintaan (Tukar Guling)"""
-    swap = db.query(models.SwapRequest).filter(models.SwapRequest.id == swap_id).first()
-    if not swap:
-        raise HTTPException(status_code=404, detail="Swap request tidak ditemukan")
-    
-    if data.status not in ["approved", "rejected"]:
-        raise HTTPException(status_code=400, detail="Status tidak valid")
-        
-    swap.status = data.status
-    db.commit()
-    return {"message": f"Swap request {data.status} successfully"}
 
 
 

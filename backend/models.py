@@ -14,6 +14,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, default="asisten")  # "asisten" atau "admin"
     rfid_uid = Column(String, unique=True, nullable=True)  # UID kartu RFID (opsional)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relasi ke tabel attendance dan schedule
     attendances = relationship("Attendance", back_populates="user")
@@ -68,20 +69,6 @@ class AttendanceShift(Base):
     # Relasi
     attendance = relationship("Attendance", back_populates="shifts")
 
-
-class SwapRequest(Base):
-    """Permintaan Tukar Shift (Tukar Guling)"""
-    __tablename__ = "swap_requests"
-
-    id = Column(Integer, primary_key=True, index=True)
-    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    target_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    requester_schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
-    target_schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=False)
-    swap_date = Column(String, nullable=False)  # "2023-10-24" atau "Oct 24, 2023"
-    reason = Column(String, nullable=True)
-    status = Column(String, default="pending")      # "pending", "approved", "rejected"
-    created_at = Column(DateTime, default=datetime.utcnow)
 
 class Announcement(Base):
     """Pengumuman dari Admin ke Asisten"""

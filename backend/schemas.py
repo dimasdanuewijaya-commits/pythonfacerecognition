@@ -89,6 +89,7 @@ class ShiftResponse(BaseModel):
 class AttendanceResponse(BaseModel):
     """Format data yang diterima oleh Flutter untuk ditampilkan di AttendanceScreen"""
     id: int
+    user_id: Optional[int] = None
     date: str                           # "Tuesday, 13 Aug 2024"
     check_in: Optional[str] = None      # "07:55 AM"
     check_out: Optional[str] = None     # "10:05 AM"
@@ -103,34 +104,6 @@ class AttendanceListResponse(BaseModel):
     """Wrapper untuk daftar attendance"""
     total: int
     records: List[AttendanceResponse]
-
-
-# ─── SWAP REQUESTS ────────────────────────────────────────────────────────
-class SwapRequestCreate(BaseModel):
-    target_user_id: int
-    requester_schedule_id: int
-    target_schedule_id: int
-    swap_date: str
-    reason: Optional[str] = None
-
-class SwapRequestResponse(BaseModel):
-    id: int
-    requester_id: int
-    target_user_id: int
-    requester_schedule_id: int
-    target_schedule_id: int
-    swap_date: str
-    reason: Optional[str] = None
-    status: str
-    
-    # Enriched data for UI
-    requester_name: Optional[str] = None
-    target_name: Optional[str] = None
-    requester_schedule_detail: Optional[str] = None # e.g. "Shift 1 - JKL"
-    target_schedule_detail: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 
 # ─── ANNOUNCEMENTS ────────────────────────────────────────────────────────
@@ -154,7 +127,7 @@ class AnnouncementResponse(BaseModel):
 class DashboardStats(BaseModel):
     """Data statistik untuk HomeScreen Flutter"""
     total_hadir: int
-    total_izin: int
+    rank: int
     total_alpha: int
     poin_mutu: float
     total_hours_str: str = "0h 0m"
