@@ -205,9 +205,16 @@ class FaceIDScreen(tk.Frame):
     def _start_camera(self):
         if self.cap is None:
             self.cap = cv2.VideoCapture(0)
-            # Flush the macOS camera buffer of old frames
+            
+            if not self.cap.isOpened():
+                self.status_label.config(text="Kamera Tidak Terdeteksi! (Colokkan Kamera)", fg="red")
+                self.is_processing = False
+                return # Stop here so we don't loop infinitely trying to read a dead camera
+                
+            # Flush the macOS/Linux camera buffer of old frames
             for _ in range(5):
                 self.cap.read()
+                
         self.camera_ready_time = time.time() + 1.5 # 1.5 second warmup
         self.is_processing = False
         self.update_frame()
@@ -260,8 +267,10 @@ class FaceIDScreen(tk.Frame):
                             self.controller.led.error(2.0)
                             self.is_error_led_on = True
                             self.after(2000, lambda: setattr(self, 'is_error_led_on', False))
-                    else:
                         self.status_label.config(text="")
+            else:
+                # If ret is False but camera was opened, it might have disconnected
+                self.status_label.config(text="Kamera Terputus!", fg="red")
                         
             self.video_loop = self.after(30, self.update_frame)
 
