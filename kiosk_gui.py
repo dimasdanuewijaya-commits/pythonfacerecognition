@@ -357,8 +357,10 @@ class RFIDScreen(tk.Frame):
                 self.controller.led.success(2.0)
                 self.controller.show_frame("SuccessScreen")
             else:
-                print(f"API Error: {msg}")
-                self.controller.show_frame("SuccessScreen")
+                messagebox.showerror("RFID Ditolak", msg)
+                self.rfid_entry.delete(0, tk.END)
+                # Lanjutkan scan jika ditolak
+                self.controller.rfid.start_scanning(self._on_rfid_success)
         else:
             # Tunda API Hit, masuk ke layar Shift
             self.controller.show_frame("ShiftMutuScreen")
