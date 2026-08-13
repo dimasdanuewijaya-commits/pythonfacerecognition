@@ -185,7 +185,7 @@ def create_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_
         )
         db.add(new_attendance)
         db.commit()
-        return {"status": "success", "message": f"Absen DATANG berhasil untuk {user.name}", "check_in": now}
+        return {"status": "success", "message": f"Absen DATANG berhasil untuk {user.name}", "user_name": user.name, "check_in": now}
     
     elif data.attendance_type == "pulang":
         # Cari record hari ini
@@ -304,13 +304,15 @@ def create_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_
                 total_points += s.points
         
         db.commit()
-        total_rp = int(total_points * 7500)
+        
+        # Format respons untuk aplikasi
         return {
             "status": "success", 
             "message": f"Absen PULANG berhasil untuk {user.name}", 
-            "check_out": now,
-            "total_points": total_points,
-            "total_rp": total_rp
+            "user_name": user.name,
+            "check_out": now, 
+            "total_points": round(total_points, 2), 
+            "estimated_salary": int(total_points * 7500)
         }
     
     else:

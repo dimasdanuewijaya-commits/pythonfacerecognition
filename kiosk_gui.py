@@ -4,7 +4,9 @@ from tkinter import messagebox
 import time
 from datetime import datetime
 import cv2
+import cv2
 from PIL import Image, ImageTk
+import platform
 from attendance_taker import FaceRecognizerService
 import hardware_manager
 
@@ -204,12 +206,13 @@ class FaceIDScreen(tk.Frame):
         
     def _start_camera(self):
         if self.cap is None:
-            # Menggabungkan kedua solusi: Paksa ke /dev/video0 dengan backend V4L2, 
-            # lalu set format MJPG agar Linux bisa menelan videonya.
-            self.cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
-            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            if platform.system() == "Linux":
+                self.cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
+                self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            else:
+                self.cap = cv2.VideoCapture(0)
             
             if not self.cap.isOpened():
                 self.status_label.config(text="Kamera Tidak Terdeteksi! (Colokkan Kamera)", fg="red")
@@ -347,11 +350,15 @@ class RFIDScreen(tk.Frame):
         self.rfid_entry.insert(0, uid)
         self.controller.current_user = name
         if self.controller.attendance_type == "datang":
-            # API Hit Datang
             success, msg = self.controller.recognizer.record_attendance(name, method="rfid", attendance_type="datang")
-            if not success:
+            if success:
+                actual_name = msg.get("user_name", name) if isinstance(msg, dict) else name
+                self.controller.current_user = actual_name
+                self.controller.led.success(2.0)
+                self.controller.show_frame("SuccessScreen")
+            else:
                 print(f"API Error: {msg}")
-            self.controller.show_frame("SuccessScreen")
+                self.controller.show_frame("SuccessScreen")
         else:
             # Tunda API Hit, masuk ke layar Shift
             self.controller.show_frame("ShiftMutuScreen")
