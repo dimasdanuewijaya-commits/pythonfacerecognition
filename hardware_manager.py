@@ -74,7 +74,12 @@ class LEDController:
         self.red_led = LED(17)
         self.yellow_led = LED(27)
         self.green_led = LED(22)
-        self.buzzer = Buzzer(23)
+        # Jika buzzer berbunyi terus, kemungkinan dia tipe Active LOW. 
+        # Coba gunakan active_high=False atau True.
+        try:
+            self.buzzer = Buzzer(23, active_high=False)
+        except Exception:
+            self.buzzer = Buzzer(23)
         self.standby()
 
     def standby(self):
