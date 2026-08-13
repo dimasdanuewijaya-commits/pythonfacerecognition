@@ -204,8 +204,11 @@ class FaceIDScreen(tk.Frame):
         
     def _start_camera(self):
         if self.cap is None:
-            # Memaksa membaca persis dari /dev/video0 agar tidak nyasar ke /dev/video30 (Encoder Hardware RPi 5)
-            self.cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
+            # Menggunakan index 0 (bawaan) tapi memaksa set resolusi dan codec MJPG
+            self.cap = cv2.VideoCapture(0)
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             
             if not self.cap.isOpened():
                 self.status_label.config(text="Kamera Tidak Terdeteksi! (Colokkan Kamera)", fg="red")
