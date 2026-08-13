@@ -4,9 +4,12 @@ import time
 import RPi.GPIO as GPIO
 from mfrc522 import SimpleMFRC522
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from backend.database import SessionLocal
-from backend.models import User
+# Tambahkan folder 'backend' ke sys.path agar file-file di dalamnya bisa saling import (database, models, dll)
+backend_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend')
+sys.path.append(backend_path)
+
+from database import SessionLocal
+from models import User
 
 def register_rfid():
     db = SessionLocal()
