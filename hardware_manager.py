@@ -20,6 +20,19 @@ class MockLED:
             # Only print OFF if we care about verbosity, skipping to keep logs clean
             self.is_on = False
 
+class MockBuzzer:
+    def __init__(self, pin):
+        self.pin = pin
+
+    def beep(self, on_time=0.1, off_time=0.1, n=1, background=True):
+        print(f"[MOCK HARDWARE] BUZZER (Pin {self.pin}) berbunyi {n} kali")
+        
+    def on(self):
+        print(f"[MOCK HARDWARE] BUZZER (Pin {self.pin}) MENYALA")
+        
+    def off(self):
+        pass
+
 class MockRFID:
     def read(self):
         # Mocks a blocking read. Waits 5 seconds then returns a dummy ID.
@@ -31,7 +44,7 @@ class MockRFID:
 # HARDWARE IMPORTS
 # ─────────────────────────────────────────────────────────────────────────────
 try:
-    from gpiozero import LED
+    from gpiozero import LED, Buzzer
     IS_RPI = True
 except ImportError:
     # If not on Raspberry Pi, use Mocks
@@ -41,6 +54,10 @@ except ImportError:
         if pin == 27: return MockLED("KUNING", pin)
         if pin == 22: return MockLED("HIJAU", pin)
         return MockLED("UNKNOWN", pin)
+        
+    def Buzzer(pin):
+        return MockBuzzer(pin)
+        
     IS_RPI = False
 
 try:
@@ -57,6 +74,7 @@ class LEDController:
         self.red_led = LED(17)
         self.yellow_led = LED(27)
         self.green_led = LED(22)
+        self.buzzer = Buzzer(23)
         self.standby()
 
     def standby(self):
@@ -66,22 +84,30 @@ class LEDController:
         self.yellow_led.on()
 
     def success(self, duration=3.0):
-        """Flash Green for X seconds, then return to standby."""
+        """Flash Green for X seconds, beep once, then return to standby."""
         def routine():
             self.red_led.off()
             self.yellow_led.off()
             self.green_led.on()
+            
+            # Bunyi beep pendek 1 kali (0.3 detik)
+            self.buzzer.beep(on_time=0.3, off_time=0.1, n=1, background=True)
+            
             time.sleep(duration)
             self.standby()
             
         threading.Thread(target=routine, daemon=True).start()
 
     def error(self, duration=3.0):
-        """Flash Red for X seconds, then return to standby."""
+        """Flash Red for X seconds, beep fast 3 times, then return to standby."""
         def routine():
             self.yellow_led.off()
             self.green_led.off()
             self.red_led.on()
+            
+            # Bunyi beep cepat 3 kali sebagai peringatan error
+            self.buzzer.beep(on_time=0.1, off_time=0.1, n=3, background=True)
+            
             time.sleep(duration)
             self.standby()
             
