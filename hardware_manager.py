@@ -154,9 +154,9 @@ class RFIDScanner:
                     print(f"[RFID] Kartu terdeteksi! UID: {uid}")
                     self.is_scanning = False # Auto stop after reading
                     
-                    # Kita asumsikan saat ini semua kartu RFID yang berhasil dibaca = Dimas
-                    # Nanti akan ditautkan ke Database asli.
-                    callback(str(uid), "Dimas (Asisten)") 
+                    # Mengirimkan UID sebagai identitas ke API Backend. 
+                    # Backend sudah pintar dan akan mencari nama User berdasarkan rfid_uid ini!
+                    callback(str(uid), str(uid)) 
                     break
         except Exception as e:
             print(f"[RFID Error] {e}")
