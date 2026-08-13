@@ -137,3 +137,26 @@ class DashboardStats(BaseModel):
     gaji_bulan_ini: float
     recent_attendance: List[AttendanceResponse] = []
     latest_announcement: Optional[AnnouncementResponse] = None
+
+
+# ─── SYSTEM MONITORING (Kiosk Heartbeat) ─────────────────────────────────
+class SystemStatusReport(BaseModel):
+    """Data yang dikirim Kiosk (Raspberry Pi) secara berkala ke Backend"""
+    rpi_online: bool = True
+    rfid_ok: bool = False
+    buzzer_ok: bool = False
+    led_ok: bool = False
+    camera_ok: bool = False
+    uptime_seconds: int = 0
+
+class SystemStatusResponse(BaseModel):
+    """Format data status sistem yang dikirim ke Flutter"""
+    backend_online: bool = True
+    database_online: bool = True
+    rpi_online: bool = False
+    rfid_ok: bool = False
+    buzzer_ok: bool = False
+    led_ok: bool = False
+    camera_ok: bool = False
+    last_heartbeat: Optional[str] = None
+    uptime_seconds: int = 0

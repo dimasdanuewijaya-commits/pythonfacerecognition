@@ -612,6 +612,60 @@ def change_password(user_id: int, req: schemas.ChangePasswordRequest, db: Sessio
     return {"message": "Password changed successfully"}
 
 
+# ─── SYSTEM MONITORING (Kiosk Heartbeat) ──────────────────────────────────
+# Simpan status terakhir dari Kiosk di memory (tidak perlu database)
+_kiosk_status = {
+    "rpi_online": False,
+    "rfid_ok": False,
+    "buzzer_ok": False,
+    "led_ok": False,
+    "camera_ok": False,
+    "last_heartbeat": None,
+    "uptime_seconds": 0,
+}
+
+@app.post("/system/status")
+def report_system_status(report: schemas.SystemStatusReport):
+    """Endpoint untuk Kiosk (Raspberry Pi) melapor status hardware-nya"""
+    _kiosk_status["rpi_online"] = report.rpi_online
+    _kiosk_status["rfid_ok"] = report.rfid_ok
+    _kiosk_status["buzzer_ok"] = report.buzzer_ok
+    _kiosk_status["led_ok"] = report.led_ok
+    _kiosk_status["camera_ok"] = report.camera_ok
+    _kiosk_status["uptime_seconds"] = report.uptime_seconds
+    _kiosk_status["last_heartbeat"] = datetime.now().isoformat()
+    return {"status": "ok", "message": "Heartbeat received"}
+
+@app.get("/system/status", response_model=schemas.SystemStatusResponse)
+def get_system_status(db: Session = Depends(get_db)):
+    """Endpoint untuk Flutter Admin Dashboard mengecek status semua komponen"""
+    # Cek apakah database bisa diakses
+    db_online = True
+    try:
+        db.execute(models.User.__table__.select().limit(1))
+    except Exception:
+        db_online = False
+    
+    # Cek apakah Kiosk masih online (heartbeat terakhir < 60 detik)
+    rpi_online = False
+    if _kiosk_status["last_heartbeat"]:
+        last_hb = datetime.fromisoformat(_kiosk_status["last_heartbeat"])
+        if (datetime.now() - last_hb).total_seconds() < 60:
+            rpi_online = _kiosk_status["rpi_online"]
+    
+    return schemas.SystemStatusResponse(
+        backend_online=True,
+        database_online=db_online,
+        rpi_online=rpi_online,
+        rfid_ok=_kiosk_status["rfid_ok"] if rpi_online else False,
+        buzzer_ok=_kiosk_status["buzzer_ok"] if rpi_online else False,
+        led_ok=_kiosk_status["led_ok"] if rpi_online else False,
+        camera_ok=_kiosk_status["camera_ok"] if rpi_online else False,
+        last_heartbeat=_kiosk_status["last_heartbeat"],
+        uptime_seconds=_kiosk_status["uptime_seconds"] if rpi_online else 0,
+    )
+
+
 # ─── HEALTH CHECK ─────────────────────────────────────────────────────────
 @app.get("/")
 def root():
@@ -621,3 +675,4 @@ def root():
         "version": "1.0.0",
         "message": "Server Backend Sistem Absensi Lab aktif dan siap menerima data!"
     }
+

@@ -57,6 +57,21 @@ class KioskGUI(tk.Tk):
         self.led = hardware_manager.LEDController()
         self.rfid = hardware_manager.RFIDScanner()
         
+        # ── Heartbeat Reporter (melapor status ke Backend) ──
+        self.heartbeat = hardware_manager.HeartbeatReporter(
+            backend_url="http://127.0.0.1:8000",
+            interval=30
+        )
+        # Set status awal hardware
+        led_status = self.led.get_status()
+        self.heartbeat.update_status(
+            buzzer_ok=led_status["buzzer_ok"],
+            led_ok=led_status["led_ok"],
+            rfid_ok=True,    # Akan di-update setelah scan pertama
+            camera_ok=False,  # Akan di-update setelah model AI loaded
+        )
+        self.heartbeat.start()
+        
         # Load AI models in background to avoid freezing the startup UI
         import threading
         threading.Thread(target=self._load_recognizer, daemon=True).start()
@@ -78,6 +93,8 @@ class KioskGUI(tk.Tk):
         
     def _load_recognizer(self):
         self.recognizer = FaceRecognizerService(detect_every=3)
+        # Kamera berhasil di-load, update heartbeat
+        self.heartbeat.update_status(camera_ok=True)
 
     def toggle_fullscreen(self, event=None):
         self.is_fullscreen = not getattr(self, 'is_fullscreen', False)

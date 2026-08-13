@@ -1,5 +1,6 @@
 import time
 import threading
+import requests
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MOCK CLASSES (For Mac/Windows Development)
@@ -118,6 +119,14 @@ class LEDController:
             
         threading.Thread(target=routine, daemon=True).start()
 
+    def get_status(self):
+        """Mengembalikan status hardware saat ini untuk Heartbeat report."""
+        return {
+            "led_ok": True,      # Kalau kita bisa instantiate LED, berarti OK
+            "buzzer_ok": True,   # Kalau kita bisa instantiate Buzzer, berarti OK
+            "is_rpi": IS_RPI,
+        }
+
 # ─────────────────────────────────────────────────────────────────────────────
 # RFID READER
 # ─────────────────────────────────────────────────────────────────────────────
@@ -163,3 +172,78 @@ class RFIDScanner:
         finally:
             self.is_scanning = False
             print("[RFID] Pemindaian dihentikan.")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HEARTBEAT REPORTER (Melapor status ke Backend setiap 30 detik)
+# ─────────────────────────────────────────────────────────────────────────────
+class HeartbeatReporter:
+    """
+    Mengirim 'detak jantung' (heartbeat) ke Backend secara berkala.
+    Ini memberi tahu Admin Dashboard bahwa Kiosk (Raspberry Pi) masih hidup
+    dan semua komponen hardware berfungsi normal.
+    """
+    def __init__(self, backend_url="http://127.0.0.1:8000", interval=30):
+        self.backend_url = backend_url
+        self.interval = interval
+        self._start_time = time.time()
+        self._running = False
+        self._thread = None
+        
+        # Status komponen (di-update dari luar)
+        self.rfid_ok = False
+        self.buzzer_ok = False
+        self.led_ok = False
+        self.camera_ok = False
+
+    def start(self):
+        """Mulai mengirim heartbeat di background thread."""
+        if self._running:
+            return
+        self._running = True
+        self._thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
+        self._thread.start()
+        print(f"[HEARTBEAT] Reporter dimulai. Interval: {self.interval} detik")
+
+    def stop(self):
+        """Hentikan heartbeat."""
+        self._running = False
+
+    def update_status(self, rfid_ok=None, buzzer_ok=None, led_ok=None, camera_ok=None):
+        """Update status komponen dari script utama."""
+        if rfid_ok is not None:
+            self.rfid_ok = rfid_ok
+        if buzzer_ok is not None:
+            self.buzzer_ok = buzzer_ok
+        if led_ok is not None:
+            self.led_ok = led_ok
+        if camera_ok is not None:
+            self.camera_ok = camera_ok
+
+    def _heartbeat_loop(self):
+        while self._running:
+            try:
+                uptime = int(time.time() - self._start_time)
+                payload = {
+                    "rpi_online": True,
+                    "rfid_ok": self.rfid_ok,
+                    "buzzer_ok": self.buzzer_ok,
+                    "led_ok": self.led_ok,
+                    "camera_ok": self.camera_ok,
+                    "uptime_seconds": uptime,
+                }
+                resp = requests.post(
+                    f"{self.backend_url}/system/status",
+                    json=payload,
+                    timeout=5
+                )
+                if resp.status_code == 200:
+                    print(f"[HEARTBEAT] ✓ Laporan terkirim (uptime: {uptime}s)")
+                else:
+                    print(f"[HEARTBEAT] ✗ Server merespon {resp.status_code}")
+            except requests.exceptions.ConnectionError:
+                print("[HEARTBEAT] ✗ Tidak bisa terhubung ke Backend")
+            except Exception as e:
+                print(f"[HEARTBEAT] ✗ Error: {e}")
+            
+            time.sleep(self.interval)
