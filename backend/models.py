@@ -14,6 +14,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, default="asisten")  # "asisten" atau "admin"
     rfid_uid = Column(String, unique=True, nullable=True)  # UID kartu RFID (opsional)
+    photo_url = Column(String, nullable=True)  # URL foto profil
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relasi ke tabel attendance dan schedule

@@ -27,6 +27,10 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Buat folder uploads/profiles jika belum ada
+os.makedirs("uploads/profiles", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # Izinkan Flutter dan Kiosk untuk mengakses API ini dari mana saja
 app.add_middleware(
     CORSMiddleware,
@@ -135,6 +139,45 @@ def update_user_rfid(user_id: int, rfid_data: schemas.UserRfidUpdate, db: Sessio
         raise HTTPException(status_code=400, detail=f"RFID ini sudah digunakan oleh {existing.name}")
         
     user.rfid_uid = rfid_data.rfid_uid
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.post("/users/{user_id}/photo", response_model=schemas.UserResponse)
+async def upload_user_photo(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Mengunggah foto profil asisten (Admin only)"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+    
+    # Validasi ekstensi
+    ext = file.filename.split(".")[-1].lower()
+    if ext not in ["jpg", "jpeg", "png"]:
+        raise HTTPException(status_code=400, detail="Hanya format JPG, JPEG, dan PNG yang diperbolehkan")
+        
+    filename = f"user_{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+    filepath = os.path.join("uploads/profiles", filename)
+    
+    # Hapus foto lama jika ada
+    if user.photo_url:
+        old_filename = user.photo_url.split("/")[-1]
+        old_filepath = os.path.join("uploads/profiles", old_filename)
+        if os.path.exists(old_filepath):
+            try:
+                os.remove(old_filepath)
+            except Exception:
+                pass
+                
+    # Simpan foto baru
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # URL menggunakan IP lokal / host (Flutter harus bisa akses ini)
+    # Di real-world, biasanya kita simpan path relatifnya lalu Flutter append baseUrl
+    photo_path = f"/uploads/profiles/{filename}"
+    user.photo_url = photo_path
+    
     db.commit()
     db.refresh(user)
     return user
@@ -375,6 +418,73 @@ def get_attendance_history(
         ))
     
     return schemas.AttendanceListResponse(total=len(result), records=result)
+
+@app.get("/admin/dashboard/stats", response_model=schemas.AdminDashboardStats)
+def get_admin_dashboard_stats(db: Session = Depends(get_db)):
+    """Statistik ringkasan untuk Admin Dashboard"""
+    today = date.today()
+    eng_dow = today.strftime('%A')
+    dow_map = {
+        'Monday': 'Senin', 'Tuesday': 'Selasa', 'Wednesday': 'Rabu',
+        'Thursday': 'Kamis', 'Friday': 'Jumat', 'Saturday': 'Sabtu', 'Sunday': 'Minggu'
+    }
+    today_dow = dow_map.get(eng_dow, eng_dow)
+
+    # 1. Total Asisten
+    total_asisten = db.query(models.User).filter(models.User.role == "asisten").count()
+
+    # 2. Avg Hadir (Persentase rata-rata kehadiran bulanan)
+    # Sebagai contoh sederhana: kita hitung persentase dari total record absensi dibagi (hari berjalan * total asisten)
+    first_day = today.replace(day=1)
+    days_passed = (today - first_day).days + 1
+    if days_passed == 0 or total_asisten == 0:
+        avg_hadir = "0%"
+    else:
+        total_attendance_this_month = db.query(models.Attendance).filter(
+            models.Attendance.date >= first_day,
+            models.Attendance.date <= today
+        ).count()
+        # Estimasi total kemungkinan absen
+        expected_attendance = total_asisten * days_passed
+        # Bisa saja lebih dari 100% jika ada asisten masuk saat weekend, tapi ini cukup untuk mock up stat
+        percentage = min(int((total_attendance_this_month / expected_attendance) * 100), 100)
+        avg_hadir = f"{percentage}%"
+
+    # 3. Kehadiran Hari Ini
+    attendances_today = db.query(models.Attendance).filter(models.Attendance.date == today).all()
+    hadir_hari_ini = len(attendances_today)
+    
+    # Hitung Terlambat (Misalnya check_in lewat dari 08:15 AM dianggap telat - disederhanakan)
+    terlambat_hari_ini = 0
+    for att in attendances_today:
+        if att.check_in:
+            try:
+                cin = datetime.strptime(att.check_in, "%I:%M %p").time()
+                # Anggap batas telat shift pagi jam 08:15 (untuk contoh)
+                if cin > datetime.strptime("08:15 AM", "%I:%M %p").time() and cin < datetime.strptime("11:00 AM", "%I:%M %p").time():
+                    terlambat_hari_ini += 1
+            except Exception:
+                pass
+
+    # Hitung Absen (Asisten yang ada jadwal hari ini tapi tidak hadir)
+    # Cari user yang punya jadwal hari ini
+    scheduled_users = db.query(models.Schedule.user_id).filter(
+        models.Schedule.day_of_week == today_dow,
+        models.Schedule.activity != "Kosong"
+    ).distinct().all()
+    
+    scheduled_user_ids = {u[0] for u in scheduled_users}
+    attended_user_ids = {a.user_id for a in attendances_today}
+    
+    absen_hari_ini = len(scheduled_user_ids - attended_user_ids)
+
+    return schemas.AdminDashboardStats(
+        total_asisten=total_asisten,
+        avg_hadir=avg_hadir,
+        hadir_hari_ini=hadir_hari_ini,
+        terlambat_hari_ini=terlambat_hari_ini,
+        absen_hari_ini=absen_hari_ini
+    )
 
 
 # ─── DASHBOARD STATS (Server -> Flutter HomeScreen) ──────────────────────

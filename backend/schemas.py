@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     rfid_uid: Optional[str] = None
+    photo_url: Optional[str] = None
 
 class UserRfidUpdate(BaseModel):
     rfid_uid: str
@@ -137,6 +138,13 @@ class DashboardStats(BaseModel):
     gaji_bulan_ini: float
     recent_attendance: List[AttendanceResponse] = []
     latest_announcement: Optional[AnnouncementResponse] = None
+
+class AdminDashboardStats(BaseModel):
+    total_asisten: int
+    avg_hadir: str
+    hadir_hari_ini: int
+    terlambat_hari_ini: int
+    absen_hari_ini: int
 
 
 # ─── SYSTEM MONITORING (Kiosk Heartbeat) ─────────────────────────────────
