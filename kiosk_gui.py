@@ -514,8 +514,9 @@ class ShiftMutuScreen(tk.Frame):
             self.after(1000, lambda: self.controller.show_frame("MainScreen"))
         
     def on_show(self):
-        user = self.controller.current_user
-        self.greeting_label.config(text=f"Halo, {user}!")
+        user = str(self.controller.current_user)
+        display_name = "Asisten" if user.isdigit() else user
+        self.greeting_label.config(text=f"Silakan Pilih Shift, {display_name}!")
         self.selected_mutu_per_shift = {r: None for r in range(5)}
         for row in self.buttons:
             for btn in row:
