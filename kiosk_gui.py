@@ -321,9 +321,11 @@ class FaceIDScreen(tk.Frame):
         if self.controller.attendance_type == "datang":
             # API Hit Datang
             success, msg = self.controller.recognizer.record_attendance(name, method="face", attendance_type="datang")
-            if not success:
-                print(f"API Error: {msg}")
-            self.controller.show_frame("SuccessScreen")
+            if success:
+                self.controller.show_frame("SuccessScreen")
+            else:
+                messagebox.showerror("Gagal Absen Datang", msg)
+                self.controller.show_frame("MainScreen")
         else:
             # Tunda API Hit, masuk ke layar Shift
             self.controller.show_frame("ShiftMutuScreen")
