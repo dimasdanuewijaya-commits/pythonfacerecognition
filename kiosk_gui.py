@@ -59,7 +59,7 @@ class KioskGUI(tk.Tk):
         
         # ── Heartbeat Reporter (melapor status ke Backend) ──
         self.heartbeat = hardware_manager.HeartbeatReporter(
-            backend_url="http://127.0.0.1:8000",
+            backend_url="http://192.168.0.100:8000",
             interval=30
         )
         # Set status awal hardware
@@ -506,7 +506,7 @@ class ShiftMutuScreen(tk.Frame):
         
         if success:
             if isinstance(response_data, dict):
-                self.controller.total_rp = response_data.get("total_rp", 0)
+                self.controller.total_rp = response_data.get("estimated_salary", 0)
         else:
             print(f"API Error: {response_data}")
             
