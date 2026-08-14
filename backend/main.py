@@ -419,6 +419,45 @@ def get_attendance_history(
     
     return schemas.AttendanceListResponse(total=len(result), records=result)
 
+@app.get("/admin/export/attendance")
+def export_attendance_csv(db: Session = Depends(get_db)):
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+
+    records = db.query(models.Attendance).order_by(models.Attendance.date.desc()).all()
+    
+    stream = io.StringIO()
+    writer = csv.writer(stream)
+    
+    # Header
+    writer.writerow(["ID", "Name", "Date", "Check In", "Check Out", "Method", "Verified", "Total Points", "Details"])
+    
+    for record in records:
+        user = db.query(models.User).filter(models.User.id == record.user_id).first()
+        name = user.name if user else "Unknown"
+        
+        total_points = sum(shift.points for shift in record.shifts)
+        
+        # Format details (e.g., "Shift 1: Teaching (2 pts) | Shift 2: Standby (1 pts)")
+        details = " | ".join([f"Shift {s.shift_number}: {s.activity} ({s.points} pts)" for s in record.shifts])
+        
+        writer.writerow([
+            record.id,
+            name,
+            record.date.strftime("%Y-%m-%d"),
+            record.check_in or "-",
+            record.check_out or "-",
+            record.method,
+            "Yes" if record.verified else "No",
+            total_points,
+            details
+        ])
+    
+    response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=attendance_export.csv"
+    return response
+
 @app.get("/admin/dashboard/stats", response_model=schemas.AdminDashboardStats)
 def get_admin_dashboard_stats(db: Session = Depends(get_db)):
     """Statistik ringkasan untuk Admin Dashboard"""
