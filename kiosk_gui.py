@@ -507,10 +507,11 @@ class ShiftMutuScreen(tk.Frame):
         if success:
             if isinstance(response_data, dict):
                 self.controller.total_rp = response_data.get("estimated_salary", 0)
+            self.controller.show_frame("SuccessScreen")
         else:
-            print(f"API Error: {response_data}")
-            
-        self.controller.show_frame("SuccessScreen")
+            messagebox.showerror("Gagal Absen Pulang", f"Error: {response_data}")
+            # Do not show success screen if it failed
+            self.after(1000, lambda: self.controller.show_frame("MainScreen"))
         
     def on_show(self):
         user = self.controller.current_user

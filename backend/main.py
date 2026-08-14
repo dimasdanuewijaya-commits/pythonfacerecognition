@@ -271,6 +271,7 @@ def create_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_
                     else:
                         # Cek apakah dia Swap menggantikan orang lain (Tukar Guling)
                         # Artinya dia bertindak sebagai target_user, mengambil requester_schedule_id
+                        today_str = today.strftime("%Y-%m-%d")
                         swap = db.query(models.SwapRequest).filter(
                             models.SwapRequest.target_user_id == user.id,
                             models.SwapRequest.status == "approved",
