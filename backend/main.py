@@ -269,28 +269,8 @@ def create_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_
                             s.activity = f"{s.activity} (Batal: Jadwal aslinya {my_sched.activity})"
                             s.points = 0
                     else:
-                        # Cek apakah dia Swap menggantikan orang lain (Tukar Guling)
-                        # Artinya dia bertindak sebagai target_user, mengambil requester_schedule_id
-                        today_str = today.strftime("%Y-%m-%d")
-                        swap = db.query(models.SwapRequest).filter(
-                            models.SwapRequest.target_user_id == user.id,
-                            models.SwapRequest.status == "approved",
-                            models.SwapRequest.swap_date == today_str
-                        ).first()
-                        
-                        if swap:
-                            orig_sched = db.query(models.Schedule).filter(
-                                models.Schedule.id == swap.requester_schedule_id,
-                                models.Schedule.shift_number == s.shift_number
-                            ).first()
-                            
-                            expected = orig_sched.activity if orig_sched else "Stand By"
-                            if s.activity.lower() != expected.lower():
-                                s.activity = f"{s.activity} (Batal: Jadwal Swap aslinya {expected})"
-                                s.points = 0
-                        else:
-                            s.activity = f"{s.activity} (Batal: Tidak ada jadwal)"
-                            s.points = 0
+                        s.activity = f"{s.activity} (Batal: Tidak ada jadwal)"
+                        s.points = 0
 
                 shift = models.AttendanceShift(
                     attendance_id=attendance.id,
