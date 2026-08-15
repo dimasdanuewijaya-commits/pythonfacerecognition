@@ -143,7 +143,7 @@ class MainScreen(tk.Frame):
         self.time_label.pack(pady=(10, 0))
         
         self.date_label = tk.Label(self.center_frame, text="", font=self.controller.header_font, bg="white", fg="black")
-        self.date_label.pack(pady=(0, 40))
+        self.date_label.pack(pady=(0, 15))
         
         self.update_clock()
         
@@ -151,7 +151,7 @@ class MainScreen(tk.Frame):
         
         # Buttons
         btn_frame = tk.Frame(self.center_frame, bg="white")
-        btn_frame.pack(pady=50)
+        btn_frame.pack(pady=(20, 0))
         
         MacButton(btn_frame, text="Check In", font=self.controller.normal_font, 
                   bg="#007bff", fg="white", borderless=1,
