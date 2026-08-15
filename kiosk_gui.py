@@ -126,10 +126,10 @@ class MainScreen(tk.Frame):
         # Place logo on the left (or centered)
         try:
             logo_img = Image.open("logo.jpeg")
-            logo_img.thumbnail((160, 160))
+            logo_img.thumbnail((120, 120))
             self.logo_photo = ImageTk.PhotoImage(logo_img)
             self.logo_label = tk.Label(header_frame, image=self.logo_photo, bg="white")
-            self.logo_label.pack(pady=10)
+            self.logo_label.pack(pady=5)
         except Exception as e:
             print("Logo not found, text fallback used")
             self.logo_label = tk.Label(self.center_frame, text="LOGO", font=self.controller.title_font, bg="white")
@@ -143,7 +143,7 @@ class MainScreen(tk.Frame):
         self.time_label.pack(pady=(10, 0))
         
         self.date_label = tk.Label(self.center_frame, text="", font=self.controller.header_font, bg="white", fg="black")
-        self.date_label.pack(pady=(0, 15))
+        self.date_label.pack(pady=(0, 30))
         
         self.update_clock()
         
@@ -151,7 +151,7 @@ class MainScreen(tk.Frame):
         
         # Buttons
         btn_frame = tk.Frame(self.center_frame, bg="white")
-        btn_frame.pack(pady=(20, 0))
+        btn_frame.pack(pady=(35, 0))
         
         MacButton(btn_frame, text="Check In", font=self.controller.normal_font, 
                   bg="#007bff", fg="white", borderless=1,
