@@ -555,7 +555,7 @@ class SuccessScreen(tk.Frame):
             msg = f"You did so well today.\nGet home safe, okay?"
             self.msg_label.config(text=msg)
             
-            mutu_msg = f"Estimasi Total Mutu\nRp {rp:,}"
+            mutu_msg = f"Today's Estimate\nRp {rp:,}"
             self.mutu_label.config(text=mutu_msg)
             self.mutu_frame.pack(pady=30)
             
