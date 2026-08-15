@@ -1,6 +1,6 @@
 import requests
 
-BASE_URL = "https://transformation-outlined-stated-camera.trycloudflare.com"
+BASE_URL = "http://localhost:8000"
 
 def test_endpoint(name, method, url, data=None):
     try:
