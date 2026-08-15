@@ -272,7 +272,7 @@ class FaceIDScreen(tk.Frame):
                         recognized_name = name
                 
                 # Ukuran sedikit dikecilkan agar muat di layar LCD Raspi (tidak kepotong bawah)
-                img = Image.fromarray(frame_rgb).resize((400, 300))
+                img = Image.fromarray(frame_rgb).resize((440, 330))
                 imgtk = ImageTk.PhotoImage(image=img)
                 self.video_label.imgtk = imgtk
                 self.video_label.configure(image=imgtk)
