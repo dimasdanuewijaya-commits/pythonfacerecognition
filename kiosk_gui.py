@@ -194,13 +194,13 @@ class FaceIDScreen(tk.Frame):
         self.center_frame = tk.Frame(self, bg="white")
         self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
-        tk.Label(self.center_frame, text="Scan Your Face", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=10)
+        tk.Label(self.center_frame, text="Scan Your Face", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=5)
         
         self.video_label = tk.Label(self.center_frame, bg="white")
-        self.video_label.pack(pady=10)
+        self.video_label.pack(pady=5)
         
         self.status_label = tk.Label(self.center_frame, text="", font=self.controller.normal_font, bg="white", fg="red")
-        self.status_label.pack(pady=5)
+        self.status_label.pack(pady=0)
                   
 
         
@@ -271,7 +271,8 @@ class FaceIDScreen(tk.Frame):
                     if name != "unknown":
                         recognized_name = name
                 
-                img = Image.fromarray(frame_rgb).resize((480, 360))
+                # Ukuran sedikit dikecilkan agar muat di layar LCD Raspi (tidak kepotong bawah)
+                img = Image.fromarray(frame_rgb).resize((400, 300))
                 imgtk = ImageTk.PhotoImage(image=img)
                 self.video_label.imgtk = imgtk
                 self.video_label.configure(image=imgtk)
