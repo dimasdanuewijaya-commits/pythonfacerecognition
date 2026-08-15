@@ -316,6 +316,11 @@ class FaceIDScreen(tk.Frame):
         
     def process_success(self, name):
         self.stop_camera()
+        
+        # Ubah "dimas danue wijaya" (dari CSV) menjadi "Dimas Danue Wijaya" agar rapi di layar
+        if isinstance(name, str) and not name.isdigit():
+            name = name.title()
+            
         self.controller.current_user = name
         
         if self.controller.attendance_type == "datang":
