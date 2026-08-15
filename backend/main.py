@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import datetime, date, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
@@ -195,7 +196,7 @@ def update_user(user_id: int, user_update: schemas.UserProfileUpdate, db: Sessio
     if not db_user:
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
     
-    old_name = db_user.name.lower()
+    old_name = db_user.name
     new_name = user_update.name.strip() if user_update.name else db_user.name
     
     # Cek email duplikat
@@ -210,16 +211,16 @@ def update_user(user_id: int, user_update: schemas.UserProfileUpdate, db: Sessio
         if existing and existing.id != user_id:
             raise HTTPException(status_code=400, detail=f"RFID sudah digunakan oleh {existing.name}")
     
-    # Sinkronisasi folder wajah jika nama berubah
-    if new_name.lower() != old_name:
+    # Sinkronisasi folder wajah jika nama berubah (termasuk perubahan huruf besar/kecil)
+    if new_name != old_name:
         face_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "data_faces_from_camera")
         if os.path.exists(face_data_dir):
             for folder in os.listdir(face_data_dir):
                 folder_path = os.path.join(face_data_dir, folder)
-                if os.path.isdir(folder_path) and folder.lower().endswith(f"_{old_name}"):
-                    # Rename folder: person_5_dimass -> person_5_dimas
+                if os.path.isdir(folder_path) and folder.lower().endswith(f"_{old_name.lower()}"):
+                    # Rename folder to exactly match new_name casing
                     parts = folder.rsplit("_", 1)
-                    new_folder = f"{parts[0]}_{new_name.lower()}"
+                    new_folder = f"{parts[0]}_{new_name}"
                     new_folder_path = os.path.join(face_data_dir, new_folder)
                     os.rename(folder_path, new_folder_path)
                     print(f"[RENAME] {folder} -> {new_folder}")
@@ -230,12 +231,12 @@ def update_user(user_id: int, user_update: schemas.UserProfileUpdate, db: Sessio
             with open(csv_path, "r") as f:
                 rows = list(csv.reader(f))
             for row in rows:
-                if row and row[0].lower() == old_name:
-                    row[0] = new_name.lower()
+                if row and row[0].lower() == old_name.lower():
+                    row[0] = new_name
             with open(csv_path, "w", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerows(rows)
-            print(f"[RENAME] Updated CSV: {old_name} -> {new_name.lower()}")
+            print(f"[RENAME] Updated CSV: {old_name} -> {new_name}")
     
     # Update database
     if user_update.name:
@@ -297,7 +298,8 @@ def create_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_
     - Absen Pulang: Update record hari ini dengan check_out + data shift
     """
     # Cari user berdasarkan nama (dari Face Recognition) atau RFID UID
-    user = db.query(models.User).filter(models.User.name == data.user_name).first()
+    # Gunakan case-insensitive matching agar "dimas danue wijaya" cocok dengan "Dimas Danue Wijaya"
+    user = db.query(models.User).filter(func.lower(models.User.name) == data.user_name.lower()).first()
     
     if not user:
         # Jika nama tidak ditemukan, coba cari lewat RFID
