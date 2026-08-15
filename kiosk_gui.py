@@ -153,12 +153,12 @@ class MainScreen(tk.Frame):
         btn_frame = tk.Frame(self.center_frame, bg="white")
         btn_frame.pack(pady=50)
         
-        MacButton(btn_frame, text="Absen Datang", font=self.controller.normal_font, 
+        MacButton(btn_frame, text="Check In", font=self.controller.normal_font, 
                   bg="#007bff", fg="white", borderless=1,
                   padx=30, pady=20, cursor="hand2",
                   command=lambda: self.select_type("datang")).pack(side=tk.LEFT, padx=20)
                   
-        MacButton(btn_frame, text="Absen Pulang", font=self.controller.normal_font, 
+        MacButton(btn_frame, text="Check Out", font=self.controller.normal_font, 
                   bg="#007bff", fg="white", borderless=1,
                   padx=30, pady=20, cursor="hand2",
                   command=lambda: self.select_type("pulang")).pack(side=tk.LEFT, padx=20)
@@ -171,14 +171,7 @@ class MainScreen(tk.Frame):
         try:
             now = datetime.now()
             time_str = now.strftime("%H:%M")
-            
-            hari_dict = {"Monday": "Senin", "Tuesday": "Selasa", "Wednesday": "Rabu", "Thursday": "Kamis", "Friday": "Jumat", "Saturday": "Sabtu", "Sunday": "Minggu"}
-            bulan_dict = {"January": "Januari", "February": "Februari", "March": "Maret", "April": "April", "May": "Mei", "June": "Juni", "July": "Juli", "August": "Agustus", "September": "September", "October": "Oktober", "November": "November", "December": "Desember"}
-            
-            hari = hari_dict[now.strftime("%A")]
-            bulan = bulan_dict[now.strftime("%B")]
-            date_str = f"{hari}, {now.strftime('%d')} {bulan} {now.strftime('%Y')}"
-            
+            date_str = now.strftime("%A, %d %B %Y")
             self.time_label.config(text=time_str)
             self.date_label.config(text=date_str)
             self.after(1000, self.update_clock)
