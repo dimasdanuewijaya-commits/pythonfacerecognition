@@ -155,12 +155,12 @@ class MainScreen(tk.Frame):
         
         MacButton(btn_frame, text="Check In", font=self.controller.normal_font, 
                   bg="#007bff", fg="white", borderless=1,
-                  padx=30, pady=20, cursor="hand2",
+                  width=12, pady=20, cursor="hand2",
                   command=lambda: self.select_type("datang")).pack(side=tk.LEFT, padx=20)
                   
         MacButton(btn_frame, text="Check Out", font=self.controller.normal_font, 
                   bg="#007bff", fg="white", borderless=1,
-                  padx=30, pady=20, cursor="hand2",
+                  width=12, pady=20, cursor="hand2",
                   command=lambda: self.select_type("pulang")).pack(side=tk.LEFT, padx=20)
 
     def select_type(self, att_type):
