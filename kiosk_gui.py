@@ -407,11 +407,11 @@ class ShiftMutuScreen(tk.Frame):
         self.greeting_label.pack(pady=(0, 0))
         
         self.subtitle_label = tk.Label(self.center_frame, text="Choose Shift", font=self.controller.header_font, bg="white", fg="gray")
-        self.subtitle_label.pack(pady=(0, 2))
+        self.subtitle_label.pack(pady=(0, 10))
         
         # Legend
         legend_text = "1: Standby | 2: Piket | 3: Teaching | 4: Rapat | 5: Riset"
-        tk.Label(self.center_frame, text=legend_text, font=self.controller.normal_font, bg="white", fg="gray").pack(pady=2)
+        tk.Label(self.center_frame, text=legend_text, font=self.controller.normal_font, bg="white", fg="gray").pack(pady=5)
         
         self.selected_mutu_per_shift = {r: None for r in range(5)}
         self.buttons = []
@@ -437,7 +437,7 @@ class ShiftMutuScreen(tk.Frame):
             self.buttons.append(row_buttons)
             
         btn_frame = tk.Frame(self.center_frame, bg="white")
-        btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(5, 0), padx=15)
+        btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(20, 0), padx=15)
         
         MacButton(btn_frame, text="< Cancel", font=self.controller.normal_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=30, pady=15,
