@@ -406,7 +406,7 @@ class ShiftMutuScreen(tk.Frame):
         self.greeting_label = tk.Label(self.center_frame, text="", font=self.controller.title_font, bg="white", fg="#007bff")
         self.greeting_label.pack(pady=(0, 0))
         
-        self.subtitle_label = tk.Label(self.center_frame, text="Pilih Shift", font=self.controller.header_font, bg="white", fg="gray")
+        self.subtitle_label = tk.Label(self.center_frame, text="Choose Shift", font=self.controller.header_font, bg="white", fg="gray")
         self.subtitle_label.pack(pady=(0, 2))
         
         # Legend
@@ -425,14 +425,14 @@ class ShiftMutuScreen(tk.Frame):
         mutu_keys = ["stand by", "piket", "teaching", "rapat", "riset"]
         
         for r, shift in enumerate(shifts):
-            tk.Label(grid_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=10, pady=2, sticky=tk.E)
+            tk.Label(grid_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=15, pady=4, sticky=tk.E)
             
             row_buttons = []
             for c, mutu in enumerate(mutu_keys):
                 btn = MacButton(grid_frame, text=str(c+1), font=self.controller.large_button_font, 
-                                bg="white", fg="#007bff", borderless=1, padx=25, pady=5,
+                                bg="white", fg="#007bff", borderless=1, padx=30, pady=8,
                                 command=lambda s=shift, m=mutu, r=r, c=c: self.select_cell(s, m, r, c))
-                btn.grid(row=r, column=c+1, padx=8, pady=2)
+                btn.grid(row=r, column=c+1, padx=10, pady=4)
                 row_buttons.append(btn)
             self.buttons.append(row_buttons)
             
@@ -524,7 +524,7 @@ class ShiftMutuScreen(tk.Frame):
     def on_show(self):
         user = str(self.controller.current_user)
         display_name = "Asisten" if user.isdigit() else user
-        self.greeting_label.config(text=f"Silakan Pilih Shift, {display_name}!")
+        self.greeting_label.config(text=f"Please Select Shift, {display_name}!")
         self.selected_mutu_per_shift = {r: None for r in range(5)}
         for row in self.buttons:
             for btn in row:
