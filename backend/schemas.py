@@ -29,6 +29,12 @@ class UserRfidUpdate(BaseModel):
     class Config:
         from_attributes = True
 
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    rfid_uid: Optional[str] = None
+
 class TokenData(BaseModel):
     user_id: Optional[str] = None
     role: Optional[str] = None

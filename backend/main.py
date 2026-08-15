@@ -144,6 +144,111 @@ def update_user_rfid(user_id: int, rfid_data: schemas.UserRfidUpdate, db: Sessio
     return user
 
 
+
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    """Menghapus akun asisten beserta data absensi, jadwal, folder wajah, dan CSV features"""
+    import csv
+    
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    old_name = db_user.name.lower()
+    
+    # Hapus folder wajah asisten
+    face_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "data_faces_from_camera")
+    if os.path.exists(face_data_dir):
+        for folder in os.listdir(face_data_dir):
+            folder_path = os.path.join(face_data_dir, folder)
+            if os.path.isdir(folder_path) and folder.lower().endswith(f"_{old_name}"):
+                shutil.rmtree(folder_path)
+                print(f"[DELETE] Removed face folder: {folder}")
+    
+    # Hapus baris asisten dari features_all.csv
+    csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "features_all.csv")
+    if os.path.exists(csv_path):
+        with open(csv_path, "r") as f:
+            rows = list(csv.reader(f))
+        new_rows = [row for row in rows if row and row[0].lower() != old_name]
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerows(new_rows)
+        print(f"[DELETE] Removed {old_name} from features_all.csv")
+    
+    # Hapus data attendance
+    attendances = db.query(models.Attendance).filter(models.Attendance.user_id == user_id).all()
+    for att in attendances:
+        db.delete(att)
+        
+    db.delete(db_user)
+    db.commit()
+    return {"message": "User deleted successfully"}
+
+
+@app.put("/users/{user_id}", response_model=schemas.UserResponse)
+def update_user(user_id: int, user_update: schemas.UserProfileUpdate, db: Session = Depends(get_db)):
+    """Mengedit data asisten (nama, email, rfid) dan sinkronisasi folder wajah + CSV"""
+    import csv
+    
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+    
+    old_name = db_user.name.lower()
+    new_name = user_update.name.strip() if user_update.name else db_user.name
+    
+    # Cek email duplikat
+    if user_update.email and user_update.email != db_user.email:
+        existing = db.query(models.User).filter(models.User.email == user_update.email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email sudah digunakan oleh user lain")
+    
+    # Cek RFID duplikat
+    if user_update.rfid_uid and user_update.rfid_uid != db_user.rfid_uid:
+        existing = db.query(models.User).filter(models.User.rfid_uid == user_update.rfid_uid).first()
+        if existing and existing.id != user_id:
+            raise HTTPException(status_code=400, detail=f"RFID sudah digunakan oleh {existing.name}")
+    
+    # Sinkronisasi folder wajah jika nama berubah
+    if new_name.lower() != old_name:
+        face_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "data_faces_from_camera")
+        if os.path.exists(face_data_dir):
+            for folder in os.listdir(face_data_dir):
+                folder_path = os.path.join(face_data_dir, folder)
+                if os.path.isdir(folder_path) and folder.lower().endswith(f"_{old_name}"):
+                    # Rename folder: person_5_dimass -> person_5_dimas
+                    parts = folder.rsplit("_", 1)
+                    new_folder = f"{parts[0]}_{new_name.lower()}"
+                    new_folder_path = os.path.join(face_data_dir, new_folder)
+                    os.rename(folder_path, new_folder_path)
+                    print(f"[RENAME] {folder} -> {new_folder}")
+        
+        # Update nama di features_all.csv
+        csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "features_all.csv")
+        if os.path.exists(csv_path):
+            with open(csv_path, "r") as f:
+                rows = list(csv.reader(f))
+            for row in rows:
+                if row and row[0].lower() == old_name:
+                    row[0] = new_name.lower()
+            with open(csv_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
+            print(f"[RENAME] Updated CSV: {old_name} -> {new_name.lower()}")
+    
+    # Update database
+    if user_update.name:
+        db_user.name = new_name
+    if user_update.email:
+        db_user.email = user_update.email
+    if user_update.rfid_uid is not None:
+        db_user.rfid_uid = user_update.rfid_uid if user_update.rfid_uid else None
+    
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
 @app.post("/users/{user_id}/photo", response_model=schemas.UserResponse)
 async def upload_user_photo(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Mengunggah foto profil asisten (Admin only)"""
@@ -493,17 +598,47 @@ def get_admin_dashboard_stats(db: Session = Depends(get_db)):
     attendances_today = db.query(models.Attendance).filter(models.Attendance.date == today).all()
     hadir_hari_ini = len(attendances_today)
     
-    # Hitung Terlambat (Misalnya check_in lewat dari 08:15 AM dianggap telat - disederhanakan)
+    # Hitung Terlambat yang sebenarnya (berdasarkan shift dan jadwal)
     terlambat_hari_ini = 0
     for att in attendances_today:
-        if att.check_in:
-            try:
-                cin = datetime.strptime(att.check_in, "%I:%M %p").time()
-                # Anggap batas telat shift pagi jam 08:15 (untuk contoh)
-                if cin > datetime.strptime("08:15 AM", "%I:%M %p").time() and cin < datetime.strptime("11:00 AM", "%I:%M %p").time():
-                    terlambat_hari_ini += 1
-            except Exception:
-                pass
+        is_late = False
+        
+        # 1. Jika sudah check-out, lihat apakah ada label "(Late)" di shiftnya
+        for shift in att.shifts:
+            if "(Late)" in shift.activity:
+                is_late = True
+                break
+                
+        # 2. Jika belum check-out, kita cek dari jadwal aslinya
+        if not is_late and not att.check_out and att.check_in:
+            user_schedules = db.query(models.Schedule).filter(
+                models.Schedule.user_id == att.user_id,
+                models.Schedule.day_of_week == today_dow,
+                models.Schedule.activity.notin_(["Kosong", "Stand By", "Standby"])
+            ).all()
+            
+            if user_schedules:
+                # Cari shift yang paling awal dia harus masuk
+                earliest_shift = min(user_schedules, key=lambda s: s.shift_number)
+                shift_start_times = {1: "08:00", 2: "10:00", 3: "12:00", 4: "14:00", 5: "16:00"}
+                
+                if earliest_shift.shift_number in shift_start_times:
+                    try:
+                        start_str = shift_start_times[earliest_shift.shift_number]
+                        start_time = datetime.strptime(start_str, "%H:%M").time()
+                        start_mins = start_time.hour * 60 + start_time.minute
+                        
+                        cin = datetime.strptime(att.check_in, "%I:%M %p").time()
+                        cin_mins = cin.hour * 60 + cin.minute
+                        
+                        # Toleransi keterlambatan 5 menit
+                        if cin_mins - start_mins > 5:
+                            is_late = True
+                    except Exception:
+                        pass
+                        
+        if is_late:
+            terlambat_hari_ini += 1
 
     # Hitung Absen (Asisten yang ada jadwal hari ini tapi tidak hadir)
     # Cari user yang punya jadwal hari ini
