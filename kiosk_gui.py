@@ -344,19 +344,16 @@ class RFIDScreen(tk.Frame):
         self.center_frame = tk.Frame(self, bg="white")
         self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
-        tk.Label(self.center_frame, text="Tempel Kartu Asisten Anda", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=50)
+        tk.Label(self.center_frame, text="Please Tap Your Assistant Card", font=self.controller.title_font, bg="white", fg="#007bff").pack(pady=50)
         
         # Simulating RFID tap for testing on laptop
         self.rfid_entry = tk.Label(self.center_frame, font=self.controller.normal_font, bg="white", fg="black")
         self.rfid_entry.pack(pady=20)
         
-
-        MacButton(self.center_frame, text="[Simulasi Tap Kartu]", bg="green", fg="white", borderless=1, padx=20, pady=10,
-                  command=self.simulate_success).pack(pady=5)
                   
         btn_frame = tk.Frame(self, bg="white")
         btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=20, padx=20)
-        MacButton(btn_frame, text="< Kembali ke Kamera", font=self.controller.normal_font, 
+        MacButton(btn_frame, text="< Back to Camera", font=self.controller.normal_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=20, pady=10,
                   command=self.go_back).pack(side=tk.LEFT)
 
