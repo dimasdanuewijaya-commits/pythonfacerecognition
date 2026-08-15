@@ -207,11 +207,11 @@ class FaceIDScreen(tk.Frame):
         btn_frame = tk.Frame(self, bg="white")
         btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=20, padx=20)
         
-        MacButton(btn_frame, text="< Batal", font=self.controller.normal_font, 
+        MacButton(btn_frame, text="< Cancel", font=self.controller.normal_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=20, pady=10,
                   command=self.go_back).pack(side=tk.LEFT)
                   
-        MacButton(btn_frame, text="Gunakan RFID >", font=self.controller.normal_font, 
+        MacButton(btn_frame, text="Use RFID >", font=self.controller.normal_font, 
                   bg="#ffc107", fg="black", borderless=1, padx=20, pady=10,
                   command=self.go_to_rfid).pack(side=tk.RIGHT)
                   
@@ -330,7 +330,7 @@ class FaceIDScreen(tk.Frame):
             if success:
                 self.controller.show_frame("SuccessScreen")
             else:
-                messagebox.showerror("Gagal Absen Datang", msg)
+                messagebox.showerror("Check-in Failed", msg)
                 self.controller.show_frame("MainScreen")
         else:
             # Tunda API Hit, masuk ke layar Shift
@@ -404,20 +404,20 @@ class ShiftMutuScreen(tk.Frame):
         self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
         self.greeting_label = tk.Label(self.center_frame, text="", font=self.controller.title_font, bg="white", fg="#007bff")
-        self.greeting_label.pack(pady=(5, 5))
+        self.greeting_label.pack(pady=(0, 0))
         
         self.subtitle_label = tk.Label(self.center_frame, text="Pilih Shift", font=self.controller.header_font, bg="white", fg="gray")
-        self.subtitle_label.pack(pady=(0, 5))
+        self.subtitle_label.pack(pady=(0, 2))
         
         # Legend
         legend_text = "1: Standby | 2: Piket | 3: Teaching | 4: Rapat | 5: Riset"
-        tk.Label(self.center_frame, text=legend_text, font=self.controller.normal_font, bg="white", fg="gray").pack(pady=5)
+        tk.Label(self.center_frame, text=legend_text, font=self.controller.normal_font, bg="white", fg="gray").pack(pady=2)
         
         self.selected_mutu_per_shift = {r: None for r in range(5)}
         self.buttons = []
         
         grid_frame = tk.Frame(self.center_frame, bg="white")
-        grid_frame.pack(pady=5)
+        grid_frame.pack(pady=2)
         
 
         
@@ -425,21 +425,21 @@ class ShiftMutuScreen(tk.Frame):
         mutu_keys = ["stand by", "piket", "teaching", "rapat", "riset"]
         
         for r, shift in enumerate(shifts):
-            tk.Label(grid_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=20, pady=8, sticky=tk.E)
+            tk.Label(grid_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=10, pady=2, sticky=tk.E)
             
             row_buttons = []
             for c, mutu in enumerate(mutu_keys):
                 btn = MacButton(grid_frame, text=str(c+1), font=self.controller.large_button_font, 
-                                bg="white", fg="#007bff", borderless=1, padx=35, pady=12,
+                                bg="white", fg="#007bff", borderless=1, padx=25, pady=5,
                                 command=lambda s=shift, m=mutu, r=r, c=c: self.select_cell(s, m, r, c))
-                btn.grid(row=r, column=c+1, padx=12, pady=8)
+                btn.grid(row=r, column=c+1, padx=8, pady=2)
                 row_buttons.append(btn)
             self.buttons.append(row_buttons)
             
         btn_frame = tk.Frame(self.center_frame, bg="white")
-        btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(20, 0), padx=15)
+        btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(5, 0), padx=15)
         
-        MacButton(btn_frame, text="< Batal", font=self.controller.normal_font, 
+        MacButton(btn_frame, text="< Cancel", font=self.controller.normal_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=30, pady=15,
                   command=lambda: self.controller.show_frame("MainScreen")).pack(side=tk.LEFT)
                   
@@ -599,7 +599,7 @@ class AdminLoginScreen(tk.Frame):
                 
         btn_frame = tk.Frame(self, bg="white")
         btn_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=30, padx=30)
-        MacButton(btn_frame, text="< Batal", font=self.controller.normal_font, 
+        MacButton(btn_frame, text="< Cancel", font=self.controller.normal_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=30, pady=15,
                   command=self.cancel).pack(side=tk.LEFT)
                   

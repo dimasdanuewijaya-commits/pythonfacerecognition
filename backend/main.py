@@ -324,7 +324,7 @@ def create_attendance(data: schemas.AttendanceCreate, db: Session = Depends(get_
         ).first()
         
         if existing:
-            return {"status": "warning", "message": f"{user.name} sudah absen datang hari ini"}
+            return {"status": "warning", "message": f"{user.name} has already checked in today"}
         
         new_attendance = models.Attendance(
             user_id=user.id,
