@@ -59,7 +59,7 @@ class KioskGUI(tk.Tk):
         
         # ── Heartbeat Reporter (melapor status ke Backend) ──
         self.heartbeat = hardware_manager.HeartbeatReporter(
-            backend_url="http://172.16.101.68:8000",
+            backend_url="http://127.0.0.1:8000",
             interval=30
         )
         # Set status awal hardware

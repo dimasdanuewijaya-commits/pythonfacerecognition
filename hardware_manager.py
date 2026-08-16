@@ -183,7 +183,7 @@ class HeartbeatReporter:
     Ini memberi tahu Admin Dashboard bahwa Kiosk (Raspberry Pi) masih hidup
     dan semua komponen hardware berfungsi normal.
     """
-    def __init__(self, backend_url="https://transformation-outlined-stated-camera.trycloudflare.com", interval=30):
+    def __init__(self, backend_url="http://127.0.0.1:8000", interval=30):
         self.backend_url = backend_url
         self.interval = interval
         self._start_time = time.time()

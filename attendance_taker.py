@@ -63,7 +63,7 @@ class FaceRecognizerService:
         Mengirim data absen ke Server FastAPI
         """
         # Gunakan IP Mac Anda agar Raspberry Pi bisa menyambung ke server
-        url = "http://172.16.101.68:8000/attendance/"
+        url = "http://127.0.0.1:8000/attendance/"
         payload = {
             "user_name": name,
             "method": method,
