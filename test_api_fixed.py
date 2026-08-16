@@ -1,6 +1,6 @@
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "https://api.himatekkomug.my.id"
 
 def test_endpoint(name, method, url, data=None):
     try:
