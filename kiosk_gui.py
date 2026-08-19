@@ -140,7 +140,7 @@ class MainScreen(tk.Frame):
         
         # Clock
         self.time_label = tk.Label(self.center_frame, text="", font=self.controller.huge_time_font, bg="white", fg="black")
-        self.time_label.pack(pady=(10, 0))
+        self.time_label.pack(pady=(40, 0))
         
         self.date_label = tk.Label(self.center_frame, text="", font=self.controller.header_font, bg="white", fg="black")
         self.date_label.pack(pady=(0, 20))
