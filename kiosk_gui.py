@@ -117,6 +117,12 @@ class MainScreen(tk.Frame):
         super().__init__(parent, bg="white")
         self.controller = controller
         
+        # Small exit button on top right
+        exit_btn = tk.Button(self, text="✖", font=("Arial", 16, "bold"), fg="#cccccc", bg="white", 
+                             bd=0, highlightthickness=0, activebackground="white", activeforeground="red", 
+                             command=self.controller.destroy)
+        exit_btn.place(relx=0.95, rely=0.02, anchor=tk.NE)
+        
         self.center_frame = tk.Frame(self, bg="white")
         self.center_frame.place(relx=0.5, rely=0.42, anchor=tk.CENTER)
         
