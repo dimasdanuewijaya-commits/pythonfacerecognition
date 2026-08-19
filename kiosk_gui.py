@@ -394,7 +394,7 @@ class ShiftMutuScreen(tk.Frame):
         self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
         self.greeting_label = tk.Label(self.center_frame, text="", font=self.controller.header_font, bg="white", fg="#007bff")
-        self.greeting_label.pack(pady=(40, 20))
+        self.greeting_label.pack(pady=(80, 30))
         
         self.selected_mutu_per_shift = {r: None for r in range(5)}
         self.buttons = []
@@ -432,7 +432,7 @@ class ShiftMutuScreen(tk.Frame):
             self.buttons.append(row_buttons)
             
         btn_frame = tk.Frame(self.center_frame, bg="white")
-        btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(20, 0), padx=10)
+        btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(50, 60), padx=20)
         
         MacButton(btn_frame, text="< Cancel", font=self.controller.large_button_font, 
                   bg="#cccccc", fg="black", borderless=1, padx=20, pady=15,
