@@ -195,6 +195,31 @@ class Face_Register:
         self.input_name.bind("<Return>", lambda e: self.GUI_get_input_name())
         self.input_name.bind("<FocusIn>", self._show_keyboard)
 
+
+
+        self._btn(panel, "➕  Create Folder", self.GUI_get_input_name,
+                  color=BTN_PRIMARY).pack(fill=tk.X, padx=16, pady=(6, 0))
+
+        # ── Step 3 ─────────────────────────────────────────────────────────
+        self._card(panel, "Step 3 — Capture Photo")
+
+        hint = tk.Label(panel,
+                        text="Position your face inside the box,\nthen click Capture.",
+                        font=self.font_label, bg=PANEL_COLOR, fg=MUTED_COLOR,
+                        justify=tk.LEFT)
+        hint.pack(anchor=tk.W, padx=16, pady=(4, 0))
+
+        self._btn(panel, "📸  Capture Face", self.save_current_face,
+                  color=BTN_SUCCESS).pack(fill=tk.X, padx=16, pady=(6, 0))
+
+        # ── Log ────────────────────────────────────────────────────────────
+        sep = tk.Frame(panel, bg=ACCENT_COLOR, height=1)
+        sep.pack(fill=tk.X, padx=12, pady=4)
+        self.lbl_log = tk.Label(panel, text="Ready.", font=self.font_mono,
+                                bg=PANEL_COLOR, fg=GREEN_COLOR,
+                                wraplength=260, justify=tk.LEFT)
+        self.lbl_log.pack(anchor=tk.W, padx=16)
+
     def _show_keyboard(self, event=None):
         if hasattr(self, 'kb_window') and self.kb_window.winfo_exists():
             return
@@ -243,29 +268,6 @@ class Face_Register:
     def _hide_keyboard(self, event=None):
         if hasattr(self, 'kb_window') and self.kb_window.winfo_exists():
             self.kb_window.destroy()
-
-        self._btn(panel, "➕  Create Folder", self.GUI_get_input_name,
-                  color=BTN_PRIMARY).pack(fill=tk.X, padx=16, pady=(6, 0))
-
-        # ── Step 3 ─────────────────────────────────────────────────────────
-        self._card(panel, "Step 3 — Capture Photo")
-
-        hint = tk.Label(panel,
-                        text="Position your face inside the box,\nthen click Capture.",
-                        font=self.font_label, bg=PANEL_COLOR, fg=MUTED_COLOR,
-                        justify=tk.LEFT)
-        hint.pack(anchor=tk.W, padx=16, pady=(4, 0))
-
-        self._btn(panel, "📸  Capture Face", self.save_current_face,
-                  color=BTN_SUCCESS).pack(fill=tk.X, padx=16, pady=(6, 0))
-
-        # ── Log ────────────────────────────────────────────────────────────
-        sep = tk.Frame(panel, bg=ACCENT_COLOR, height=1)
-        sep.pack(fill=tk.X, padx=12, pady=4)
-        self.lbl_log = tk.Label(panel, text="Ready.", font=self.font_mono,
-                                bg=PANEL_COLOR, fg=GREEN_COLOR,
-                                wraplength=260, justify=tk.LEFT)
-        self.lbl_log.pack(anchor=tk.W, padx=16)
     # ─────────────────────────────────────────────────────────────────────────
     # BUSINESS LOGIC
     # ─────────────────────────────────────────────────────────────────────────
