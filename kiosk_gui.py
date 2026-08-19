@@ -32,7 +32,7 @@ class KioskGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Lab Attendance Kiosk")
-        self.geometry("800x480")  # Ukuran umum LCD Raspberry Pi (7 inch)
+        self.geometry("600x1024")  # Mode Portrait LCD 7 Inch (1024x600 diputar)
         self.configure(bg="white")
         
         self.is_fullscreen = True
@@ -40,13 +40,13 @@ class KioskGUI(tk.Tk):
         self.bind("<F11>", self.toggle_fullscreen)
         self.bind("<Escape>", self.end_fullscreen)
         
-        # Font definitions
-        self.title_font = tkFont.Font(family='Helvetica', size=32, weight='bold')
-        self.header_font = tkFont.Font(family='Helvetica', size=24, weight='bold')
-        self.normal_font = tkFont.Font(family='Helvetica', size=18)
-        self.large_button_font = tkFont.Font(family='Helvetica', size=22, weight='bold')
-        self.huge_time_font = tkFont.Font(family='Helvetica', size=110, weight='bold')
-        self.huge_msg_font = tkFont.Font(family='Helvetica', size=48, weight='bold')
+        # Font definitions disesuaikan untuk layar Portrait (Lebar 600px, Tinggi 1024px)
+        self.title_font = tkFont.Font(family='Helvetica', size=28, weight='bold')
+        self.header_font = tkFont.Font(family='Helvetica', size=20, weight='bold')
+        self.normal_font = tkFont.Font(family='Helvetica', size=16)
+        self.large_button_font = tkFont.Font(family='Helvetica', size=18, weight='bold')
+        self.huge_time_font = tkFont.Font(family='Helvetica', size=80, weight='bold')
+        self.huge_msg_font = tkFont.Font(family='Helvetica', size=36, weight='bold')
         
         # Variables to track state
         self.current_user = None
@@ -393,7 +393,7 @@ class ShiftMutuScreen(tk.Frame):
         self.center_frame = tk.Frame(self, bg="white")
         self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
-        self.greeting_label = tk.Label(self.center_frame, text="", font=self.controller.title_font, bg="white", fg="#007bff")
+        self.greeting_label = tk.Label(self.center_frame, text="", font=self.controller.normal_font, bg="white", fg="#007bff")
         self.greeting_label.pack(pady=(0, 5))
         
         # Legend
@@ -406,32 +406,30 @@ class ShiftMutuScreen(tk.Frame):
         grid_frame = tk.Frame(self.center_frame, bg="white")
         grid_frame.pack(pady=2)
         
-
-        
         shifts = ["SHIFT 1", "SHIFT 2", "SHIFT 3", "SHIFT 4", "SHIFT 5"]
         mutu_keys = ["stand by", "piket", "teaching", "rapat", "riset"]
         
         for r, shift in enumerate(shifts):
-            tk.Label(grid_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=15, pady=4, sticky=tk.E)
+            tk.Label(grid_frame, text=shift, font=self.controller.normal_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=2, pady=2, sticky=tk.E)
             
             row_buttons = []
             for c, mutu in enumerate(mutu_keys):
-                btn = MacButton(grid_frame, text=str(c+1), font=self.controller.large_button_font, 
-                                bg="white", fg="#007bff", borderless=1, padx=35, pady=10,
+                btn = MacButton(grid_frame, text=str(c+1), font=self.controller.normal_font, 
+                                bg="white", fg="#007bff", borderless=1, padx=6, pady=4,
                                 command=lambda s=shift, m=mutu, r=r, c=c: self.select_cell(s, m, r, c))
-                btn.grid(row=r, column=c+1, padx=10, pady=4)
+                btn.grid(row=r, column=c+1, padx=2, pady=2)
                 row_buttons.append(btn)
             self.buttons.append(row_buttons)
             
         btn_frame = tk.Frame(self.center_frame, bg="white")
-        btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(20, 0), padx=15)
+        btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(20, 0), padx=10)
         
         MacButton(btn_frame, text="< Cancel", font=self.controller.normal_font, 
-                  bg="#cccccc", fg="black", borderless=1, padx=30, pady=15,
+                  bg="#cccccc", fg="black", borderless=1, padx=10, pady=10,
                   command=lambda: self.controller.show_frame("MainScreen")).pack(side=tk.LEFT)
                   
-        self.confirm_btn = MacButton(btn_frame, text="CONFIRM", font=self.controller.large_button_font, 
-                                     bg="#cccccc", fg="black", borderless=1, padx=50, pady=15,
+        self.confirm_btn = MacButton(btn_frame, text="CONFIRM", font=self.controller.normal_font, 
+                                     bg="#cccccc", fg="black", borderless=1, padx=15, pady=10,
                                      command=self.submit)
         self.confirm_btn.pack(side=tk.RIGHT)
                   
