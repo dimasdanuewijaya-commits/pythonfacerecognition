@@ -393,43 +393,48 @@ class ShiftMutuScreen(tk.Frame):
         self.center_frame = tk.Frame(self, bg="white")
         self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
-        self.greeting_label = tk.Label(self.center_frame, text="", font=self.controller.normal_font, bg="white", fg="#007bff")
-        self.greeting_label.pack(pady=(0, 5))
-        
-        # Legend
-        legend_text = "1: Standby | 2: Piket | 3: Teaching | 4: Rapat | 5: Riset"
-        tk.Label(self.center_frame, text=legend_text, font=self.controller.normal_font, bg="white", fg="gray").pack(pady=5)
+        self.greeting_label = tk.Label(self.center_frame, text="", font=self.controller.header_font, bg="white", fg="#007bff")
+        self.greeting_label.pack(pady=(0, 10))
         
         self.selected_mutu_per_shift = {r: None for r in range(5)}
         self.buttons = []
         
-        grid_frame = tk.Frame(self.center_frame, bg="white")
-        grid_frame.pack(pady=2)
+        main_container = tk.Frame(self.center_frame, bg="white")
+        main_container.pack(pady=5)
         
         shifts = ["SHIFT 1", "SHIFT 2", "SHIFT 3", "SHIFT 4", "SHIFT 5"]
         mutu_keys = ["stand by", "piket", "teaching", "rapat", "riset"]
+        mutu_labels = ["Standby", "Piket", "Teaching", "Rapat", "Riset"]
         
         for r, shift in enumerate(shifts):
-            tk.Label(grid_frame, text=shift, font=self.controller.normal_font, bg="white", fg="#007bff").grid(row=r, column=0, padx=2, pady=2, sticky=tk.E)
+            shift_frame = tk.Frame(main_container, bg="white")
+            shift_frame.pack(fill=tk.X, pady=8)
+            
+            tk.Label(shift_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").pack(anchor=tk.W)
+            
+            btn_frame_inner = tk.Frame(shift_frame, bg="white")
+            btn_frame_inner.pack(fill=tk.X, pady=2)
             
             row_buttons = []
             for c, mutu in enumerate(mutu_keys):
-                btn = MacButton(grid_frame, text=str(c+1), font=self.controller.normal_font, 
-                                bg="white", fg="#007bff", borderless=1, padx=6, pady=4,
+                btn = MacButton(btn_frame_inner, text=mutu_labels[c], font=self.controller.normal_font, 
+                                bg="white", fg="#007bff", borderless=1, padx=15, pady=12,
                                 command=lambda s=shift, m=mutu, r=r, c=c: self.select_cell(s, m, r, c))
-                btn.grid(row=r, column=c+1, padx=2, pady=2)
+                row_idx = c // 3
+                col_idx = c % 3
+                btn.grid(row=row_idx, column=col_idx, padx=6, pady=6)
                 row_buttons.append(btn)
             self.buttons.append(row_buttons)
             
         btn_frame = tk.Frame(self.center_frame, bg="white")
         btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(20, 0), padx=10)
         
-        MacButton(btn_frame, text="< Cancel", font=self.controller.normal_font, 
-                  bg="#cccccc", fg="black", borderless=1, padx=10, pady=10,
+        MacButton(btn_frame, text="< Cancel", font=self.controller.large_button_font, 
+                  bg="#cccccc", fg="black", borderless=1, padx=20, pady=15,
                   command=lambda: self.controller.show_frame("MainScreen")).pack(side=tk.LEFT)
                   
-        self.confirm_btn = MacButton(btn_frame, text="CONFIRM", font=self.controller.normal_font, 
-                                     bg="#cccccc", fg="black", borderless=1, padx=15, pady=10,
+        self.confirm_btn = MacButton(btn_frame, text="CONFIRM", font=self.controller.large_button_font, 
+                                     bg="#cccccc", fg="black", borderless=1, padx=30, pady=15,
                                      command=self.submit)
         self.confirm_btn.pack(side=tk.RIGHT)
                   
