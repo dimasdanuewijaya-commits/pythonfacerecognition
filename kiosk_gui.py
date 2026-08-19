@@ -126,7 +126,7 @@ class MainScreen(tk.Frame):
         # Place logo on the left (or centered)
         try:
             logo_img = Image.open("logo.jpeg")
-            logo_img.thumbnail((120, 120))
+            logo_img.thumbnail((250, 250))
             self.logo_photo = ImageTk.PhotoImage(logo_img)
             self.logo_label = tk.Label(header_frame, image=self.logo_photo, bg="white")
             self.logo_label.pack(pady=5)
@@ -147,21 +147,19 @@ class MainScreen(tk.Frame):
         
         self.update_clock()
         
-
-        
         # Buttons
         btn_frame = tk.Frame(self.center_frame, bg="white")
-        btn_frame.pack(pady=(35, 0))
+        btn_frame.pack(pady=(40, 0), fill=tk.X)
         
-        MacButton(btn_frame, text="Check In", font=self.controller.normal_font, 
+        MacButton(btn_frame, text="Check In", font=self.controller.large_button_font, 
                   bg="#007bff", fg="white", borderless=1,
-                  width=12, pady=20, cursor="hand2",
-                  command=lambda: self.select_type("datang")).pack(side=tk.LEFT, padx=20)
+                  pady=20, cursor="hand2",
+                  command=lambda: self.select_type("datang")).pack(side=tk.TOP, fill=tk.X, pady=10)
                   
-        MacButton(btn_frame, text="Check Out", font=self.controller.normal_font, 
+        MacButton(btn_frame, text="Check Out", font=self.controller.large_button_font, 
                   bg="#007bff", fg="white", borderless=1,
-                  width=12, pady=20, cursor="hand2",
-                  command=lambda: self.select_type("pulang")).pack(side=tk.LEFT, padx=20)
+                  pady=20, cursor="hand2",
+                  command=lambda: self.select_type("pulang")).pack(side=tk.TOP, fill=tk.X, pady=10)
 
     def select_type(self, att_type):
         self.controller.attendance_type = att_type
