@@ -394,7 +394,7 @@ class ShiftMutuScreen(tk.Frame):
         self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         
         self.greeting_label = tk.Label(self.center_frame, text="", font=self.controller.header_font, bg="white", fg="#007bff")
-        self.greeting_label.pack(pady=(0, 10))
+        self.greeting_label.pack(pady=(40, 20))
         
         self.selected_mutu_per_shift = {r: None for r in range(5)}
         self.buttons = []
@@ -410,10 +410,10 @@ class ShiftMutuScreen(tk.Frame):
             shift_frame = tk.Frame(main_container, bg="white")
             shift_frame.pack(fill=tk.X, pady=8)
             
-            tk.Label(shift_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").pack(anchor=tk.W)
+            tk.Label(shift_frame, text=shift, font=self.controller.large_button_font, bg="white", fg="#007bff").pack(anchor=tk.CENTER)
             
             btn_frame_inner = tk.Frame(shift_frame, bg="white")
-            btn_frame_inner.pack(fill=tk.X, pady=2)
+            btn_frame_inner.pack(pady=2)
             
             row_buttons = []
             for c, mutu in enumerate(mutu_keys):
