@@ -415,14 +415,19 @@ class ShiftMutuScreen(tk.Frame):
             btn_frame_inner = tk.Frame(shift_frame, bg="white")
             btn_frame_inner.pack(pady=2)
             
+            row1_frame = tk.Frame(btn_frame_inner, bg="white")
+            row1_frame.pack(side=tk.TOP, pady=3)
+            row2_frame = tk.Frame(btn_frame_inner, bg="white")
+            row2_frame.pack(side=tk.TOP, pady=3)
+            
             row_buttons = []
             for c, mutu in enumerate(mutu_keys):
-                btn = MacButton(btn_frame_inner, text=mutu_labels[c], font=self.controller.normal_font, 
+                parent_frame = row1_frame if c < 3 else row2_frame
+                
+                btn = MacButton(parent_frame, text=mutu_labels[c], font=self.controller.normal_font, 
                                 bg="white", fg="#007bff", borderless=1, padx=15, pady=12,
                                 command=lambda s=shift, m=mutu, r=r, c=c: self.select_cell(s, m, r, c))
-                row_idx = c // 3
-                col_idx = c % 3
-                btn.grid(row=row_idx, column=col_idx, padx=6, pady=6)
+                btn.pack(side=tk.LEFT, padx=6)
                 row_buttons.append(btn)
             self.buttons.append(row_buttons)
             
