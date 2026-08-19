@@ -118,7 +118,7 @@ class MainScreen(tk.Frame):
         self.controller = controller
         
         self.center_frame = tk.Frame(self, bg="white")
-        self.center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        self.center_frame.place(relx=0.5, rely=0.42, anchor=tk.CENTER)
         
         header_frame = tk.Frame(self.center_frame, bg="white")
         header_frame.pack(pady=10, fill=tk.X)
@@ -126,7 +126,7 @@ class MainScreen(tk.Frame):
         # Place logo on the left (or centered)
         try:
             logo_img = Image.open("logo.jpeg")
-            logo_img.thumbnail((250, 250))
+            logo_img.thumbnail((200, 200))
             self.logo_photo = ImageTk.PhotoImage(logo_img)
             self.logo_label = tk.Label(header_frame, image=self.logo_photo, bg="white")
             self.logo_label.pack(pady=5)
@@ -143,13 +143,13 @@ class MainScreen(tk.Frame):
         self.time_label.pack(pady=(10, 0))
         
         self.date_label = tk.Label(self.center_frame, text="", font=self.controller.header_font, bg="white", fg="black")
-        self.date_label.pack(pady=(0, 30))
+        self.date_label.pack(pady=(0, 20))
         
         self.update_clock()
         
         # Buttons
         btn_frame = tk.Frame(self.center_frame, bg="white")
-        btn_frame.pack(pady=(40, 0), fill=tk.X)
+        btn_frame.pack(pady=(25, 0), fill=tk.X)
         
         MacButton(btn_frame, text="Check In", font=self.controller.large_button_font, 
                   bg="#007bff", fg="white", borderless=1,
