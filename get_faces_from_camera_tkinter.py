@@ -80,7 +80,7 @@ class Face_Register:
         
         # Center wrapper
         self.wrapper = tk.Frame(self.win, bg=BG_COLOR)
-        self.wrapper.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        self.wrapper.pack(fill=tk.BOTH, expand=True)
         
         # Force focus on macOS
         self.win.lift()
@@ -89,11 +89,11 @@ class Face_Register:
         self.win.focus_force()
 
         # ── Fonts ──────────────────────────────────────────────────────────
-        self.font_title   = tkFont.Font(family='Helvetica', size=24, weight='bold')
-        self.font_label   = tkFont.Font(family='Helvetica', size=14)
-        self.font_step    = tkFont.Font(family='Helvetica', size=16, weight='bold')
-        self.font_mono    = tkFont.Font(family='Courier',   size=14)
-        self.font_big_num = tkFont.Font(family='Helvetica', size=36, weight='bold')
+        self.font_title   = tkFont.Font(family='Helvetica', size=20, weight='bold')
+        self.font_label   = tkFont.Font(family='Helvetica', size=12)
+        self.font_step    = tkFont.Font(family='Helvetica', size=14, weight='bold')
+        self.font_mono    = tkFont.Font(family='Courier',   size=12)
+        self.font_big_num = tkFont.Font(family='Helvetica', size=28, weight='bold')
 
         # ── Header bar ─────────────────────────────────────────────────────
         header = tk.Frame(self.wrapper, bg=ACCENT_COLOR, height=50)
@@ -111,7 +111,7 @@ class Face_Register:
 
         # ── Main body ──────────────────────────────────────────────────────
         body = tk.Frame(self.wrapper, bg=BG_COLOR)
-        body.pack(fill=tk.BOTH, expand=True, padx=16, pady=12)
+        body.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
         # Top: camera
         left = tk.Frame(body, bg=BG_COLOR)
@@ -141,7 +141,7 @@ class Face_Register:
 
         # Bottom: control panel
         right = tk.Frame(body, bg=PANEL_COLOR, bd=0)
-        right.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(18, 0))
+        right.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(4, 0))
 
         self._build_right_panel(right)
 
@@ -161,7 +161,7 @@ class Face_Register:
     def _build_right_panel(self, panel):
         # ── Stats ──────────────────────────────────────────────────────────
         stats = tk.Frame(panel, bg=PANEL_COLOR)
-        stats.pack(fill=tk.X, padx=12, pady=12)
+        stats.pack(fill=tk.X, padx=12, pady=4)
 
         tk.Label(stats, text="People in Database",
                  font=self.font_label, bg=PANEL_COLOR, fg=MUTED_COLOR).pack()
@@ -193,6 +193,22 @@ class Face_Register:
                                    relief=tk.FLAT, bd=4)
         self.input_name.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
         self.input_name.bind("<Return>", lambda e: self.GUI_get_input_name())
+        self.input_name.bind("<FocusIn>", self._show_keyboard)
+        self.input_name.bind("<FocusOut>", self._hide_keyboard)
+
+    def _show_keyboard(self, event=None):
+        import subprocess
+        try:
+            subprocess.Popen(['onboard'])
+        except Exception:
+            pass
+
+    def _hide_keyboard(self, event=None):
+        import subprocess
+        try:
+            subprocess.Popen(['killall', 'onboard'])
+        except Exception:
+            pass
 
         self._btn(panel, "➕  Create Folder", self.GUI_get_input_name,
                   color=BTN_PRIMARY).pack(fill=tk.X, padx=16, pady=(6, 0))
@@ -211,18 +227,11 @@ class Face_Register:
 
         # ── Log ────────────────────────────────────────────────────────────
         sep = tk.Frame(panel, bg=ACCENT_COLOR, height=1)
-        sep.pack(fill=tk.X, padx=12, pady=12)
+        sep.pack(fill=tk.X, padx=12, pady=4)
         self.lbl_log = tk.Label(panel, text="Ready.", font=self.font_mono,
                                 bg=PANEL_COLOR, fg=GREEN_COLOR,
                                 wraplength=260, justify=tk.LEFT)
         self.lbl_log.pack(anchor=tk.W, padx=16)
-
-        # ── Bottom Action ──────────────────────────────────────────────────
-        btn_close = tk.Button(panel, text="⬅ Kembali ke Kiosk", command=self.win.destroy,
-                              font=self.font_step, bg=RED_COLOR, fg=WHITE_COLOR,
-                              cursor="hand2", padx=12, pady=10, relief=tk.FLAT)
-        btn_close.pack(fill=tk.X, side=tk.BOTTOM, padx=16, pady=20)
-        
     # ─────────────────────────────────────────────────────────────────────────
     # BUSINESS LOGIC
     # ─────────────────────────────────────────────────────────────────────────
