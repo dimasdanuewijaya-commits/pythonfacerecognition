@@ -26,8 +26,8 @@ BTN_PRIMARY   = "#0ea5e9"
 BTN_DANGER    = "#ef4444"
 BTN_SUCCESS   = "#22c55e"
 
-CAM_WIDTH     = 720
-CAM_HEIGHT    = 540
+CAM_WIDTH     = 480
+CAM_HEIGHT    = 360
 # Kamera juga di-set ke resolusi ini dari awal agar lebih ringan
 DETECT_EVERY  = 3   # Jalankan face detection hanya setiap N frame (hemat CPU)
 
@@ -113,9 +113,9 @@ class Face_Register:
         body = tk.Frame(self.wrapper, bg=BG_COLOR)
         body.pack(fill=tk.BOTH, expand=True, padx=16, pady=12)
 
-        # Left: camera
+        # Top: camera
         left = tk.Frame(body, bg=BG_COLOR)
-        left.pack(side=tk.LEFT, fill=tk.BOTH)
+        left.pack(side=tk.TOP, fill=tk.BOTH)
 
         cam_border = tk.Frame(left, bg=ACCENT_COLOR, bd=2, relief=tk.FLAT)
         cam_border.pack()
@@ -139,10 +139,9 @@ class Face_Register:
                                        bg=PANEL_COLOR, fg=RED_COLOR, padx=10)
         self.lbl_range_warn.pack(side=tk.LEFT)
 
-        # Right: control panel
-        right = tk.Frame(body, bg=PANEL_COLOR, width=400, bd=0)
-        right.pack(side=tk.LEFT, fill=tk.Y, padx=(18, 0))
-        right.pack_propagate(False)
+        # Bottom: control panel
+        right = tk.Frame(body, bg=PANEL_COLOR, bd=0)
+        right.pack(side=tk.TOP, fill=tk.BOTH, expand=True, pady=(18, 0))
 
         self._build_right_panel(right)
 
