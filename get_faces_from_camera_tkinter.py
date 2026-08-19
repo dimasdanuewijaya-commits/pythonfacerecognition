@@ -26,8 +26,8 @@ BTN_PRIMARY   = "#0ea5e9"
 BTN_DANGER    = "#ef4444"
 BTN_SUCCESS   = "#22c55e"
 
-CAM_WIDTH     = 480
-CAM_HEIGHT    = 360
+CAM_WIDTH     = 320
+CAM_HEIGHT    = 240
 # Kamera juga di-set ke resolusi ini dari awal agar lebih ringan
 DETECT_EVERY  = 3   # Jalankan face detection hanya setiap N frame (hemat CPU)
 
@@ -89,11 +89,11 @@ class Face_Register:
         self.win.focus_force()
 
         # ── Fonts ──────────────────────────────────────────────────────────
-        self.font_title   = tkFont.Font(family='Helvetica', size=20, weight='bold')
-        self.font_label   = tkFont.Font(family='Helvetica', size=12)
-        self.font_step    = tkFont.Font(family='Helvetica', size=14, weight='bold')
-        self.font_mono    = tkFont.Font(family='Courier',   size=12)
-        self.font_big_num = tkFont.Font(family='Helvetica', size=28, weight='bold')
+        self.font_title   = tkFont.Font(family='Helvetica', size=16, weight='bold')
+        self.font_label   = tkFont.Font(family='Helvetica', size=11)
+        self.font_step    = tkFont.Font(family='Helvetica', size=12, weight='bold')
+        self.font_mono    = tkFont.Font(family='Courier',   size=11)
+        self.font_big_num = tkFont.Font(family='Helvetica', size=20, weight='bold')
 
         # ── Header bar ─────────────────────────────────────────────────────
         header = tk.Frame(self.wrapper, bg=ACCENT_COLOR, height=50)
@@ -194,21 +194,55 @@ class Face_Register:
         self.input_name.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 0))
         self.input_name.bind("<Return>", lambda e: self.GUI_get_input_name())
         self.input_name.bind("<FocusIn>", self._show_keyboard)
-        self.input_name.bind("<FocusOut>", self._hide_keyboard)
 
     def _show_keyboard(self, event=None):
-        import subprocess
-        try:
-            subprocess.Popen(['onboard'])
-        except Exception:
-            pass
+        if hasattr(self, 'kb_window') and self.kb_window.winfo_exists():
+            return
+            
+        self.kb_window = tk.Toplevel(self.win)
+        self.kb_window.geometry("600x300+0+650")
+        self.kb_window.overrideredirect(True)
+        self.kb_window.attributes('-topmost', True)
+        self.kb_window.configure(bg="#2a2a2a")
+        
+        kb_frame = tk.Frame(self.kb_window, bg="#2a2a2a")
+        kb_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        keys = [
+            ['q','w','e','r','t','y','u','i','o','p'],
+            ['a','s','d','f','g','h','j','k','l'],
+            ['z','x','c','v','b','n','m','<-'],
+            ['Space', 'Enter', 'Close']
+        ]
+        
+        for r, row in enumerate(keys):
+            row_frame = tk.Frame(kb_frame, bg="#2a2a2a")
+            row_frame.pack(fill=tk.X, pady=2)
+            for key in row:
+                w = 1 if key not in ['Space', 'Enter', 'Close'] else 3
+                btn = tk.Button(row_frame, text=key, font=("Helvetica", 14, "bold"), 
+                                width=w, height=2, bg="#4a4a4a", fg="white", bd=1,
+                                command=lambda k=key: self._press_key(k))
+                btn.pack(side=tk.LEFT, padx=2, fill=tk.X, expand=True)
+                
+    def _press_key(self, key):
+        if key == '<-':
+            current = self.input_name.get()
+            self.input_name.delete(0, tk.END)
+            self.input_name.insert(0, current[:-1])
+        elif key == 'Space':
+            self.input_name.insert(tk.END, ' ')
+        elif key == 'Enter':
+            self.GUI_get_input_name()
+            self._hide_keyboard()
+        elif key == 'Close':
+            self._hide_keyboard()
+        else:
+            self.input_name.insert(tk.END, key)
 
     def _hide_keyboard(self, event=None):
-        import subprocess
-        try:
-            subprocess.Popen(['killall', 'onboard'])
-        except Exception:
-            pass
+        if hasattr(self, 'kb_window') and self.kb_window.winfo_exists():
+            self.kb_window.destroy()
 
         self._btn(panel, "➕  Create Folder", self.GUI_get_input_name,
                   color=BTN_PRIMARY).pack(fill=tk.X, padx=16, pady=(6, 0))
