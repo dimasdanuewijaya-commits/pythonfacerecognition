@@ -18,3 +18,7 @@ venv/
 
 # Log
 *.log
+
+# Markdown / Documents
+*.md
+!README.md
